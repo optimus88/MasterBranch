@@ -1,0 +1,14 @@
+#============================================Variables Declaration=============================================
+export backupDetails=/data/cpq/CMQA_TEMP_FILES/backupDetails.txt
+export tempDest=/data/cpq/CMQA_TEMP_FILES/tempDest/
+export host_name=`hostname`
+export dest_ui=/data/cpq/selectica/apps/cpq/ui/cust/gems/i18n/ui/
+export dest_docs=/data/cpq/selectica/apps/cpq/docs/
+export dest_ssp=/data/cpq/selectica/apps/cpq/ssp/
+export dest_xsl=/data/cpq/selectica/apps/cpq/xsl/
+export dest_classes=/data/cpq/selectica/apps/cpq/classes/
+export dest_xml=/data/cpq/selectica/apps/cpq/xml/
+export dest_workflow=/data/cpq/selectica/apps/cpq/workflow/
+export dest_cpq=/data/cpq/selectica/apps/cpq/
+export dest_notFound=/data/cpq/CMQA_TEMP_FILES/notFoundFiles/
+#============================================Variables Declaration=============================================
