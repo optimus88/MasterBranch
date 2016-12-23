@@ -1,0 +1,2615 @@
+<CxGen2Root>
+<CxComment>
+***************************************************
+Author: GE Healthcare
+
+Description: This page is coming prior to HTML Preview page and it contains the selection/deselection
+	which customer will select in order to view the Quote as per his requirements. The page consists
+	of following sections
+1.	Local declaration
+2.	Html attribute settings
+3.	Html head and JavaScript section
+4.	Html rendering section
+
+Global Stores Used:
+	* CommonStore
+	* st_Territory
+	* ui_comp
+
+
+Navigation To:
+1.	quote_summary_detail(.html)
+
+Navigated From:
+1.	quote_preview(.html)
+2.	service(.html)
+
+***************************************************
+</CxComment>
+
+<CxComment>
+*****************************(Nov 3 '05) (Alok)*********************************
+function setStateInfo called to save state for embedding CPQ in SWB
+***********************************************************************************
+</CxComment>
+<CxCallSub name="setStateInfo"/>
+
+<CxSession LTID="Session"/>
+<CxStore LTID="extraArgs" Value="Session.cmdExtraArgs" Private="true"/>
+<CxModel LTID="model"/>
+<Cxcart LTID="cart"/>
+<CxQuote LTID="quote"/>
+
+<CxStore ltid="Quote_Elements" Private="true"/>
+
+<CxComment>
+***************************************************************************
+	This Block decides the Display Type according to the customer locale.
+	First it checks if the locale is present in the CommonStore, if not
+	then it fetches the locale from the cart.
+***************************************************************************
+</CxComment>
+<CxIpVar target="CommonStore" field="DisplayType" value="extraArgs.DisplayType" cond="NOT(NULL(extraArgs.DisplayType))"/>
+	<CxIf Cond="NULL(cart.CUSTOMER_LOCALE)">
+		<CxThen>
+			<CxIpVar target="cart" field="CUSTOMER_LOCALE" value="cart.USER_LOCALE" />
+		</CxThen>
+	</CxIf>
+<CxIpVar target="CommonStore" field="quote_kind" value="Equipment" />
+<CxComment>************** Extract investment Summary values-Added by kumar Start**************</CxComment>
+<CxPlugin
+	ltid		=	"PricerDataPlugin_Category"
+	function	=	"UIFunctions\\.getCatPriceInfoDetails"
+	totalExtndSellPrice ="cart.AGG_TOTAL_NET_SELLING_PRICE_NO_TRADEIN"
+	rowInfoName	=	"PricerLineItems"
+	keyAttrName	=	"ItemPath"
+	attrList	="Extended Price after Sales Discount"
+	target		=	"cart"
+/>
+
+<CxStore ltid="PricerDataStoreCategory"			value="PricerDataPlugin_Category.value"/>
+
+<CxStore LTID="InvestmentSummary">
+
+<CxIpVar  field="Software" value="PricerDataStoreCategory.Software"/>
+<CxIpVar  field="Miscellaneous" value="PricerDataStoreCategory.Miscellaneous"/>
+<CxIpVar  field="Equipment" value="PricerDataStoreCategory.Equipment"/>
+<CxIpVar  field="Hardware" value="PricerDataStoreCategory.Hardware"/>
+<CxIpVar  field="Training" value="PricerDataStoreCategory.Training"/>
+<CxIpVar  field="TradeIn" value="PricerDataStoreCategory.TradeIn"/>
+<CxIpVar  field="Accessories" value="PricerDataStoreCategory.Accessories"/>
+<CxIpVar  field="Service" value="PricerDataStoreCategory.Service"/>
+</CxStore>
+
+<CxForEach TID="loop" field="InvestmentSummary.value">
+			<CxCallSub name="getFormattedCurr" val="InvestmentSummary.(loop.value)" cntry="cart.DEST_COUNTRY" curr="cart.CURRENCY"/>
+			<CxComment>
+			<CxOpVar Field="CommonStore.CURRENCY_COLUMN_FORMAT"/>
+			</CxComment>
+			<CxIpVar target="CommonStore" field="loop.value" value="CommonStore.CURRENCY_COLUMN_FORMAT"/>
+</CxForEach>
+<CxComment>************** Extract global values-Added by kumar End**************</CxComment>
+
+<CxComment>
+*****************************************************************************
+	getQuoteElements method is called to fetch the Quote elements and
+	stores them into Quote_Elements Store. This method takes lots of
+	parameters like domainID, Quote Type Quote Category and locale before
+	retrieving the values.
+*****************************************************************************
+</CxComment>
+<CxIpVar target="cart" field="QUOTE_EXPIRATION_DATE" value="cart.QED_LIMIT" cond="AND(NOT(Null(cart.QED_LIMIT)),Null(cart.QUOTE_EXPIRATION_DATE))"/>
+<CxCallSub name="getQuoteElements" domainId="cart.QUOTE_DOMAIN_ID" quoteType="cart.DESCRIPTION5" quoteCat="Equipment" locale="cart.CUSTOMER_LOCALE"/>
+	<CxForEach Field="st_Territory.Quote_Element_List" tid="loop">
+	<CxStore value="loop.value" tid="elements" Private="true">
+		<CxForEach Field="elements.Value">
+		<CxIpVar Field="this.Value" Value="elements.this.Value" target="Quote_Elements"/>
+		</CxForEach>
+	</CxStore>
+	</CxForEach>
+
+<CxComment>Added for retrieving tax id Simplification July release changes; 502266788;Archana Pandey;start </CxComment>
+<CxIpVar target="CommonStore" field="ACC_TAX_ID" value="Default"/>
+<CxIpVar target="CommonStore" field="ACC_UCM_ID" value="Default"/>
+
+<CxPlugin ltid="accUCMTaxIdDetails" function="CPQIntegrationPlugin\\.getAccountIdDetails" accid="cart.ACCOUNT_ID">
+	<CxStore ltid="accUCMTaxIdStore" value="accUCMTaxIdDetails.value">
+		<CxStore Value="accUCMTaxIdStore.accDetails" ltid="accUcmRelInfo">	
+		<CxComment>
+			<CxCallSub name="setTerritoryInfo" key="ACC_TAX_ID" value="accUcmRelInfo.acc_TaxId" targetType="Cart"/>
+			<CxCallSub name="setTerritoryInfo" key="ACC_UCM_ID" value="accUcmRelInfo.acc_UcmId" targetType="Cart"/>
+		</CxComment>
+			<CxIpVar target="CommonStore" field="ACC_TAX_ID" value="accUcmRelInfo.acc_TaxId"/>
+			<CxIpVar target="CommonStore" field="ACC_UCM_ID" value="accUcmRelInfo.acc_UcmId"/>
+		</CxStore>
+	</CxStore>
+</CxPlugin>
+
+<!--
+CommonStore.ACC_UCM_ID:						<CxOpVar field="CommonStore.ACC_UCM_ID"/>	
+CommonStore.ACC_TAX_ID	:					<CxOpVar field="CommonStore.ACC_TAX_ID"/>
+signature page cart UCM ID :::   			<CxOpVar field="cart.ACC_UCM_ID"/>
+signature page cart UCM ID from store:::   	<CxOpVar field="accUcmRelInfo.acc_UcmId"/>
+signature page cart TAX ID :::  			<CxOpVar field="cart.ACC_TAX_ID"/>
+signature page cart TAX ID from store:::   	<CxOpVar field="accUcmRelInfo.acc_TaxId"/>
+-->
+
+<CxComment>Added for retrieving tax id Simplification July release changes; 502266788;Archana Pandey;end</CxComment>
+
+<CxPlugin ltid="cartFactorDetails" function="UIFunctions\\.getPricerCartFactors"/>
+<CxStore ltid="PricerCartFactorsStore" value="cartFactorDetails.value"/>
+
+<CxStore ltid="print_option_diabled_store" private="true">
+	<CxIpVar field="disabledList" value="[net_price,ni_price,trade_price,show_tax_pref,show_netsell_price,price1_upsell,price2_upsell,option_break,acc_attach,price5,contrac_price5,conf_contract_price,promo,price5_cover,price_rollup]"/>
+</CxStore>
+
+<CxStore ltid="temp" private="true"/>
+<CxIpVar target="temp" field="class" value="portlet-form-field-label"/>
+
+
+<CxIf Cond="NOT(NULL(cart.SALES_PERSON_SSO_ID))"><CxThen>
+	<CxCart tid="cart">
+		<CxPlugin tid="uup" function="CPQIntegrationPlugin\\.getUserProfile" SSOId="cart.SALES_PERSON_SSO_ID" >
+			<CxStore Value="uup.value" tid="uupStore">
+				<CxStore Value="uupStore.uup_Address" tid="addrStore">
+					<CxCallSub name="setTerritoryInfo" key="REP_ADDR_COUNTRY" value="addrStore.addr_Country" targetType="Cart"/>
+					<CxCallSub name="setTerritoryInfo" key="REP_ADDR_STATE" value="addrStore.addr_State" targetType="Cart"/>
+					<CxCallSub name="setTerritoryInfo" key="REP_ADDR_CITY" value="addrStore.addr_City" targetType="Cart"/>
+					<CxCallSub name="setTerritoryInfo" key="REP_ADDR_STREET" value="addrStore.addr_Street" targetType="Cart"/>
+					<CxCallSub name="setTerritoryInfo" key="REP_ADDR_POSTCODE" value="addrStore.addr_PostalCode" targetType="Cart"/>
+					<CxCallSub name="setTerritoryInfo" key="REP_ADDR_PAGER" value="addrStore.addr_Pager" targetType="Cart"/>
+					<CxComment><CxCallSub name="setTerritoryInfo" key="REP_JOBTITLE" value="addrStore.addr_Title" targetType="Cart"/></CxComment>
+				</CxStore>
+				<CxStore Value="uupStore.uup_i18n" tid="i18n">
+					<CxCallSub name="setTerritoryInfo" key="REP_COMPANY_NAME" value="i18n.uup_CompanyName"  targetType="Cart"/>
+					<CxCallSub name="setTerritoryInfo" key="REP_COUNTRY" value="i18n.uup_Country"  targetType="Cart"/>
+					<CxCallSub name="setTerritoryInfo" key="REP_LANGUAGE" value="i18n.uup_Language" targetType="Cart"/>
+					<CxCallSub name="setTerritoryInfo" key="REP_CURRENCY" value="i18n.uup_Currency" targetType="Cart"/>
+					<CxCallSub name="setTerritoryInfo" key="REP_LOCALE" value="(i18n.uup_Language)\\_(i18n.uup_Country)" targetType="Cart"/>
+				</CxStore>
+			</CxStore>
+		</CxPlugin>
+
+<CxPlugin ltid="getContactDetails" Function="CPQIntegrationPlugin\\.GetUserProfileSSO" SSOId="cart.SALES_PERSON_SSO_ID"/>
+                 <CxStore ltid="getCont" value="getContactDetails.value" Private="true" />
+
+                                        <CxCallSub name="setTerritoryInfo" key="REP_ADDR_PHONE" value="getCont.telephonenumber" targetType="Cart"/>
+                                        <CxCallSub name="setTerritoryInfo" key="REP_ADDR_FAX" value="getCont.facsimiletelephonenumber" targetType="Cart"/>
+
+
+
+
+
+
+
+		<CxCallSub name="setTerritoryInfo" key="SALES_PERSON_NAME" value="CommonStore.SALES_PERSON_NAME" targetType="Cart"/>
+		<CxCallSub name="setTerritoryInfo" key="REP_EMAIL" value="CommonStore.SALES_PERSON_EMAIL" targetType="Cart"/>
+
+		<CxPlugin tid="terrPlugin" function="CPQIntegrationPlugin\\.getSSOBasedInfo" SSOId="cart.SALES_PERSON_SSO_ID">
+				<CxStore value="terrPlugin.value" tid="terrInfo">
+					<CxStore value="terrInfo.terr_Person" tid="personInfo">
+						<CxCallSub name="setTerritoryInfo" key="REP_JOBTITLE" value="personInfo.terr_Job_Title" targetType="Cart"/>
+					</CxStore>
+				</CxStore>
+			</CxPlugin>
+	</CxCart>
+</CxThen></CxIf>
+
+<CxIf cond="or(null(extraArgs.ResetToUP),eq(extraArgs.ResetToUP,''))"><CxThen>
+	<CxCallSub name="getQuotePrintPreferences"/>
+</CxThen><CxElse>
+	<CxIf cond="eq(CommonStore.USER_PRINT_PREFERENCES_FLAG,true)"><CxThen>
+		<CxCallSub name="setPrintSelection" src="UUP"/>
+		<CxCallSub name="setContextPrefernces"/>
+	</CxThen></CxIf>
+</CxElse></CxIf>
+
+
+
+<HTML>
+<head>
+
+	<CxComment>
+	*****************************(29-Nov-2004) (  Deepak  )*************************************
+	Subroutine "htmlHeader" is called to get all page header level common entries.
+	eg :- meta tag declarations, CSS links, disableBackFunction, startAction, javascriptCommon
+	********************************************************************************************
+	</CxComment>
+	<CxCallSub name="htmlHeader"/>
+
+	<!-- java script calendar -->
+	<CxCallSub Name="javascriptCalendar"/>
+
+	<script language="javascript" >
+
+	<CxComment>***********for R5++ Cover and Summary Page**********</CxComment>
+
+	function chkCoverPrefs(name)
+	{
+	
+	<CxComment>***********Changes by Shyam**********</CxComment>
+	if (name == "prnt_cover_contrac" || name=="frombody")
+	{
+		if(document.getElementById("prnt_cover_contrac").checked == true)
+		{
+		
+			<CxIf cond= "EQ(cart.ACCOUNT_COUNTRY,US)">
+			<CxThen>
+			//document.getElementById("cover_free_text_entry-0").disabled = false;
+			document.getElementById("coverLetterText").style.display = "block";
+			document.getElementById("cover_free_text_entry-0").readOnly = false;
+			</CxThen>
+			</CxIf>
+		}
+		else
+		{
+			<CxIf cond= "EQ(cart.ACCOUNT_COUNTRY,US)">
+			<CxThen>
+			//document.getElementById("cover_free_text_entry-0").disabled = true;
+			//document.getElementById("cover_free_text_entry-0").readOnly = true;
+			//hide coverLetterText div Section
+			document.getElementById("coverLetterText").style.display = "none";
+			</CxThen>
+			</CxIf>
+		}
+	}
+		
+		<CxComment>***********Changes by Shyam**********</CxComment>
+			if(name == "prnt_summary_contrac" || name=="frombody")
+			{
+
+				if(document.getElementById("prnt_summary_contrac").checked == true)
+				{
+					<CxIf cond="eq(print_options_store.config_summary_contrac,Y)"><CxThen>
+						document.getElementById("config_summary_contrac").disabled = false;
+						document.getElementById("config_summary_contrac").checked = true;
+						document.getElementById("config_summary_contrac-0").value = "Y";
+					</Cxthen><CxElse>
+						document.getElementById("config_summary_contrac").disabled = false;
+						document.getElementById("config_summary_contrac").checked = false;
+						document.getElementById("config_summary_contrac-0").value = "N";
+					</CxElse></CxIf>
+					<CxIf cond="eq(print_options_store.quote_summary_contrac,Y)"><CxThen>
+						document.getElementById("quote_summary_contrac").disabled = false;
+						document.getElementById("quote_summary_contrac").checked = true;
+						document.getElementById("quote_summary_contrac-0").value = "Y";
+					</Cxthen><CxElse>
+						document.getElementById("quote_summary_contrac").disabled = false;
+						document.getElementById("quote_summary_contrac").checked = false;
+						document.getElementById("quote_summary_contrac-0").value = "N";
+					</CxElse></CxIf>
+
+				}
+				else
+				{
+					document.getElementById("config_summary_contrac").disabled = true;
+					document.getElementById("config_summary_contrac").checked = false;
+					document.getElementById("config_summary_contrac-0").value = "N";
+					document.getElementById("quote_summary_contrac").disabled = true;
+					document.getElementById("quote_summary_contrac").checked = false;
+					document.getElementById("quote_summary_contrac-0").value = "N";
+				}
+			}
+
+			if(name == "config_summary_contrac" || name=="frombody" || name == "prnt_summary_contrac")
+			{
+					if(document.getElementById("config_summary_contrac").checked == true)
+					{
+                                                                          if((document.getElementById("price5").disabled == false) && (document.getElementById("prnt_summary_contrac").disabled == false))
+                                                                               {
+                                                                                <CxIf cond="eq(print_options_store.price5_cover,Y)">
+                                                                                   <CxThen>
+                                                                                      document.getElementById("price5_cover").disabled = false;
+			                                            document.getElementById("price5_cover").checked = true;
+			                                            document.getElementById("price5_cover-0").value = "Y";
+                                                                                   </CxThen><CxElse>
+                                                                                      document.getElementById("price5_cover").disabled = false;
+			                                            document.getElementById("price5_cover").checked = false;
+			                                            document.getElementById("price5_cover-0").value = "N";
+                                                                                  </CxElse></CxIf>
+                                                                               }
+                                                                             else if(document.getElementById("prnt_summary_contrac").disabled == true)
+                                                                               {
+                                                                               document.getElementById("price5_cover").disabled = true;
+			                                     document.getElementById("price5_cover").checked = false;
+			                                     document.getElementById("price5_cover-0").value = "N";
+                                                                              }
+						document.getElementById("config_name_contrac").disabled = false;
+						document.getElementById("total_extlistprice_contrac").disabled = false;
+						document.getElementById("total_discount_contrac").disabled = false;
+
+						<CxIf cond="eq(print_options_store.net_extprice_contrac,Y)"><CxThen>
+							document.getElementById("net_extprice_contrac").disabled = false;
+							document.getElementById("net_extprice_contrac").checked = true;
+							document.getElementById("net_extprice_contrac-0").value = "Y";
+						</Cxthen><CxElse>
+							document.getElementById("net_extprice_contrac").disabled = false;
+							document.getElementById("net_extprice_contrac").checked = false;
+							document.getElementById("net_extprice_contrac-0").value = "N";
+						</CxElse></CxIf>
+					}
+					else
+					{
+						document.getElementById("config_name_contrac").disabled = true;
+						document.getElementById("config_name_contrac").checked = false;
+						document.getElementById("config_name_contrac-0").value = "N";
+						document.getElementById("total_extlistprice_contrac").disabled = true;
+						document.getElementById("total_extlistprice_contrac").checked = false;
+						document.getElementById("total_extlistprice_contrac-0").value = "N";
+						document.getElementById("total_discount_contrac").disabled = true;
+						document.getElementById("total_discount_contrac").checked = false;
+						document.getElementById("total_discount_contrac-0").value = "N";
+						document.getElementById("net_extprice_contrac").disabled = true;
+						document.getElementById("net_extprice_contrac").checked = false;
+						document.getElementById("net_extprice_contrac-0").value = "N";
+                                                                                    document.getElementById("price5_cover").disabled = true;
+						document.getElementById("price5_cover").checked = false;
+						document.getElementById("price5_cover-0").value = "N";
+					}
+			}
+
+<CxComment>R6--Improvement In Config Presentation Requirement</CxComment>
+
+            if(name == "price2" || name == "price4")
+            {
+                if(document.getElementById("price2").checked == true)
+                {
+                    document.getElementById("price4").checked = false;
+                    document.getElementById("price4").disabled = true;
+                    document.getElementById("price4-0").value = "N";
+                }
+                else if(document.getElementById("price4").checked == true)
+                {
+                    document.getElementById("price2").checked = false;
+                    document.getElementById("price2").disabled = true;
+                    document.getElementById("price2-0").value = "N";
+               }
+               else if((document.getElementById("price1").checked == true) && (document.getElementById("price5").checked == true))
+                {
+                    document.getElementById("price2").checked = false;
+                    document.getElementById("price2").disabled = true;
+                    document.getElementById("price2-0").value = "N";
+                    document.getElementById("price4").checked = false;
+                    document.getElementById("price4").disabled = false;
+                    document.getElementById("price4-0").value = "N";
+                }
+               else if((document.getElementById("price1").checked == true) && (document.getElementById("price5").disabled == false))
+               {
+                    document.getElementById("price2").checked = false;
+                    document.getElementById("price2").disabled = true;
+                    document.getElementById("price2-0").value = "N";
+                    document.getElementById("price4").checked = false;
+                    document.getElementById("price4").disabled = false;
+                    document.getElementById("price4-0").value = "N";
+               }
+                else
+                {
+                    document.getElementById("price2").checked = false;
+                    document.getElementById("price2").disabled = false;
+                    document.getElementById("price2-0").value = "N";
+                    document.getElementById("price4").checked = false;
+                    document.getElementById("price4").disabled = false;
+                    document.getElementById("price4-0").value = "N";
+                }
+            }
+
+
+         if(document.getElementById("price5").disabled == false)
+         {
+
+         if(name == "price5" || name=="price1")
+          {
+
+            if((document.getElementById("price5").checked == true) && (document.getElementById("price1").checked == true))
+                  {
+                    document.getElementById("total_discount").checked = false;
+                    document.getElementById("total_discount").disabled = true;
+                    document.getElementById("total_discount-0").value = "N";
+
+                    document.getElementById("discount_perct").checked = false;
+                    document.getElementById("discount_perct").disabled = true;
+                    document.getElementById("discount_perct-0").value = "N";
+
+                    document.getElementById("config_discount").checked = false;
+                    document.getElementById("config_discount").disabled = true;
+                    document.getElementById("config_discount-0").value = "N";
+
+                    if(document.getElementById("config_list_price").checked == true)
+                    {
+                     document.getElementById("config_list_price").checked = true;
+                     document.getElementById("config_list_price").disabled = false;
+                     document.getElementById("config_list_price-0").value = "Y";
+                    }
+                    else
+                    {
+                     document.getElementById("config_list_price").checked = false;
+                     document.getElementById("config_list_price").disabled = false;
+                     document.getElementById("config_list_price-0").value = "N";
+                    }
+
+                    if(document.getElementById("conf_contract_price").checked == true)
+                    {
+                     document.getElementById("conf_contract_price").checked = true;
+                     document.getElementById("conf_contract_price").disabled = false;
+                     document.getElementById("conf_contract_price-0").value = "Y";
+                    }
+                    else
+                    {
+                    document.getElementById("conf_contract_price").checked = false;
+                    document.getElementById("conf_contract_price").disabled = false;
+                    document.getElementById("conf_contract_price-0").value = "N";
+                   }
+
+                   if(document.getElementById("total_extlistprice").checked == true)
+                    {
+                    document.getElementById("total_extlistprice").checked = true;
+                    document.getElementById("total_extlistprice").disabled = false;
+                    document.getElementById("total_extlistprice-0").value = "Y";
+                    }
+                   else
+                   {
+                    document.getElementById("total_extlistprice").checked = false;
+                    document.getElementById("total_extlistprice").disabled = false;
+                    document.getElementById("total_extlistprice-0").value = "N";
+                   }
+
+                   if(document.getElementById("contrac_price5").checked == true)
+                    {
+                    document.getElementById("contrac_price5").checked = true;
+                    document.getElementById("contrac_price5").disabled = false;
+                    document.getElementById("contrac_price5-0").value = "Y";
+                    }
+                   else
+                   {
+                    document.getElementById("contrac_price5").checked = false;
+                    document.getElementById("contrac_price5").disabled = false;
+                    document.getElementById("contrac_price5-0").value = "N";
+                  }
+
+                    if((document.getElementById("price2").checked == true) || (document.getElementById("price2").disabled == false))
+                    {
+                    document.getElementById("price2").checked = false;
+                    document.getElementById("price2").disabled = true;
+                    document.getElementById("price2-0").value = "N";
+                    document.getElementById("price4").checked = false;
+                    document.getElementById("price4").disabled = false;
+                    document.getElementById("price4-0").value = "N";
+                    }
+
+                }
+
+               else if((document.getElementById("price5").checked == true) && (document.getElementById("price1").checked == false))
+                  {
+                    document.getElementById("config_list_price").checked = false;
+                    document.getElementById("config_list_price").disabled = true;
+                    document.getElementById("config_list_price-0").value = "N";
+
+                    document.getElementById("conf_contract_price").checked = false;
+                    document.getElementById("conf_contract_price").disabled = true;
+                    document.getElementById("conf_contract_price-0").value = "N";
+
+                    document.getElementById("total_extlistprice").checked = false;
+                    document.getElementById("total_extlistprice").disabled = true;
+                    document.getElementById("total_extlistprice-0").value = "N";
+
+                   if(document.getElementById("total_discount").checked == true)
+                    {
+                     document.getElementById("total_discount").checked = true;
+                     document.getElementById("total_discount").disabled = false;
+                     document.getElementById("total_discount-0").value = "Y";
+                    }
+                   else
+                    {
+                     document.getElementById("total_discount").checked = false;
+                     document.getElementById("total_discount").disabled = false;
+                     document.getElementById("total_discount-0").value = "N";
+                    }
+
+                   if(document.getElementById("discount_perct").checked == true)
+                    {
+                     document.getElementById("discount_perct").checked = true;
+                     document.getElementById("discount_perct").disabled = false;
+                     document.getElementById("discount_perct-0").value = "Y";
+                    }
+                   else
+                    {
+                     document.getElementById("discount_perct").checked = false;
+                     document.getElementById("discount_perct").disabled = false;
+                     document.getElementById("discount_perct-0").value = "N";
+                    }
+
+                   if(document.getElementById("config_discount").checked == true)
+                    {
+                    document.getElementById("config_discount").checked = true;
+                    document.getElementById("config_discount").disabled = false;
+                    document.getElementById("config_discount-0").value = "Y";
+                    }
+                   else
+                   {
+                    document.getElementById("config_discount").checked = false;
+                    document.getElementById("config_discount").disabled = false;
+                    document.getElementById("config_discount-0").value = "N";
+                   }
+
+                   if(document.getElementById("contrac_price5").checked == true)
+                    {
+                     document.getElementById("contrac_price5").checked = true;
+                     document.getElementById("contrac_price5").disabled = false;
+                     document.getElementById("contrac_price5-0").value = "Y";
+                    }
+                   else
+                    {
+                     document.getElementById("contrac_price5").checked = false;
+                     document.getElementById("contrac_price5").disabled = false;
+                     document.getElementById("contrac_price5-0").value = "N";
+                    }
+
+                   if((document.getElementById("price4").checked == false) && (document.getElementById("price4").disabled == false))
+                    {
+                    document.getElementById("price2").checked = false;
+                    document.getElementById("price2").disabled = false;
+                    document.getElementById("price2-0").value = "N";
+                    }
+
+                  }
+                 else if((document.getElementById("price5").checked == false) && (document.getElementById("price1").checked == true))
+                {
+
+                    document.getElementById("conf_contract_price").checked = false;
+                    document.getElementById("conf_contract_price").disabled = true;
+                    document.getElementById("conf_contract_price-0").value = "N";
+
+                    document.getElementById("total_discount").checked = false;
+                    document.getElementById("total_discount").disabled = true;
+                    document.getElementById("total_discount-0").value = "N";
+
+                    document.getElementById("discount_perct").checked = false;
+                    document.getElementById("discount_perct").disabled = true;
+                    document.getElementById("discount_perct-0").value = "N";
+
+                    document.getElementById("contrac_price5").checked = false;
+                    document.getElementById("contrac_price5").disabled = true;
+                    document.getElementById("contrac_price5-0").value = "N";
+
+                    document.getElementById("config_discount").checked = false;
+                    document.getElementById("config_discount").disabled = true;
+                    document.getElementById("config_discount-0").value = "N";
+
+                   if(document.getElementById("total_extlistprice").checked == true)
+                    {
+                    document.getElementById("total_extlistprice").checked = true;
+                    document.getElementById("total_extlistprice").disabled = false;
+                    document.getElementById("total_extlistprice-0").value = "Y";
+                    }
+                   else
+                   {
+                    document.getElementById("total_extlistprice").checked = false;
+                    document.getElementById("total_extlistprice").disabled = false;
+                    document.getElementById("total_extlistprice-0").value = "N";
+                   }
+
+                   if(document.getElementById("config_list_price").checked == true)
+                    {
+                     document.getElementById("config_list_price").checked = true;
+                     document.getElementById("config_list_price").disabled = false;
+                     document.getElementById("config_list_price-0").value = "Y";
+                    }
+                    else
+                    {
+                     document.getElementById("config_list_price").checked = false;
+                     document.getElementById("config_list_price").disabled = false;
+                     document.getElementById("config_list_price-0").value = "N";
+                    }
+
+                    if((document.getElementById("price2").checked == true) || (document.getElementById("price2").disabled == false))
+                    {
+                    document.getElementById("price2").checked = false;
+                    document.getElementById("price2").disabled = true;
+                    document.getElementById("price2-0").value = "N";
+                    document.getElementById("price4").checked = false;
+                    document.getElementById("price4").disabled = false;
+                    document.getElementById("price4-0").value = "N";
+                    }
+
+               }
+           else
+               {
+                   if(document.getElementById("total_discount").checked == true)
+                    {
+                     document.getElementById("total_discount").checked = true;
+                     document.getElementById("total_discount").disabled = false;
+                     document.getElementById("total_discount-0").value = "Y";
+                    }
+                   else
+                    {
+                     document.getElementById("total_discount").checked = false;
+                     document.getElementById("total_discount").disabled = false;
+                     document.getElementById("total_discount-0").value = "N";
+                    }
+
+                   if(document.getElementById("discount_perct").checked == true)
+                    {
+                     document.getElementById("discount_perct").checked = true;
+                     document.getElementById("discount_perct").disabled = false;
+                     document.getElementById("discount_perct-0").value = "Y";
+                    }
+                   else
+                    {
+                     document.getElementById("discount_perct").checked = false;
+                     document.getElementById("discount_perct").disabled = false;
+                     document.getElementById("discount_perct-0").value = "N";
+                    }
+
+                   if(document.getElementById("config_discount").checked == true)
+                    {
+                    document.getElementById("config_discount").checked = true;
+                    document.getElementById("config_discount").disabled = false;
+                    document.getElementById("config_discount-0").value = "Y";
+                    }
+                   else
+                   {
+                    document.getElementById("config_discount").checked = false;
+                    document.getElementById("config_discount").disabled = false;
+                    document.getElementById("config_discount-0").value = "N";
+                   }
+
+                   if(document.getElementById("config_list_price").checked == true)
+                    {
+                     document.getElementById("config_list_price").checked = true;
+                     document.getElementById("config_list_price").disabled = false;
+                     document.getElementById("config_list_price-0").value = "Y";
+                    }
+                    else
+                    {
+                     document.getElementById("config_list_price").checked = false;
+                     document.getElementById("config_list_price").disabled = false;
+                     document.getElementById("config_list_price-0").value = "N";
+                    }
+
+                   if(document.getElementById("conf_contract_price").checked == true)
+                    {
+                     document.getElementById("conf_contract_price").checked = true;
+                     document.getElementById("conf_contract_price").disabled = false;
+                     document.getElementById("conf_contract_price-0").value = "Y";
+                    }
+                    else
+                    {
+                    document.getElementById("conf_contract_price").checked = false;
+                    document.getElementById("conf_contract_price").disabled = false;
+                    document.getElementById("conf_contract_price-0").value = "N";
+                   }
+
+                   if(document.getElementById("total_extlistprice").checked == true)
+                    {
+                    document.getElementById("total_extlistprice").checked = true;
+                    document.getElementById("total_extlistprice").disabled = false;
+                    document.getElementById("total_extlistprice-0").value = "Y";
+                    }
+                   else
+                   {
+                    document.getElementById("total_extlistprice").checked = false;
+                    document.getElementById("total_extlistprice").disabled = false;
+                    document.getElementById("total_extlistprice-0").value = "N";
+                   }
+
+                   if(document.getElementById("contrac_price5").checked == true)
+                    {
+                     document.getElementById("contrac_price5").checked = true;
+                     document.getElementById("contrac_price5").disabled = false;
+                     document.getElementById("contrac_price5-0").value = "Y";
+                    }
+                   else
+                    {
+                     document.getElementById("contrac_price5").checked = false;
+                     document.getElementById("contrac_price5").disabled = false;
+                     document.getElementById("contrac_price5-0").value = "N";
+                    }
+
+                  if((document.getElementById("price4").checked == false) && (document.getElementById("price4").disabled == false))
+                    {
+                     document.getElementById("price2").checked = false;
+                     document.getElementById("price2").disabled = false;
+                     document.getElementById("price2-0").value = "N";
+                    }
+               }
+         }
+      }
+
+  }
+
+	function budgContractSel()
+	{
+		/* Simplification changes; Disabling cover letter text area for budgetary contracts; Start*/
+		<CxIf cond= "EQ(cart.ACCOUNT_COUNTRY,US)">
+			<CxThen>
+		if(document.getElementById("budgetary_doc").checked){
+			//document.getElementById("cover_free_text_entry-0").disabled = true;
+			//document.getElementById("cover_free_text_entry-0").readOnly = true;
+			//hide coverLetterText div section
+			document.getElementById("coverLetterText").style.display = "none";
+		}
+		else{
+		
+			//document.getElementById("cover_free_text_entry-0").disabled = false;
+			document.getElementById("coverLetterText").style.display = "block";
+			document.getElementById("cover_free_text_entry-0").readOnly = false;
+		}
+		</Cxthen>
+		</CxIf>	
+		/* Simplification changes; Disabling cover letter text area for budgetary contracts; end*/
+		
+		
+		/* Simplification changes; For Ext Sell price in Options display;Start*/
+		
+		
+		<CxIpVar target="CommonStore" field="Upsell_Flag1" value="False"/>
+		<CxFilter TID="ProductConfigs" Field="cart.Quotes" Cond="NOT(MEMBER(Elem.extraInfo\\.DESCRIPTION3,[NonProducts,Trade-In,Non-Inventory,Local Buy,Non-Listed,Installation,BulkBuy]))">
+			<CxSort TID="s_quotes" Field="ProductConfigs.value" SortOn="extraInfo\\._CONTAINER_QUOTE_ID">
+				<CxForEach TID="loopQuote" Field="s_quotes.value">
+					<CxFilter field="loopQuote.LineItems-UPSELL CATEGORY" tid="filter_upsell">
+						<CxIf cond="GT(filter_upsell.size,0)"><CxThen>
+							<CxIpVar target="CommonStore" field="Upsell_Flag1" value="True"/>
+						</CxThen></CxIf>
+					</CxFilter>
+				</CxForEach>
+			</CxSort>
+		</CxFilter>
+		
+		<Cxif cond="eq(CommonStore.Upsell_Flag1,True)">
+		<CxThen>
+		if(document.getElementById("budgetary_doc").checked){
+		
+
+				document.getElementById("price3_upsell").checked = true;
+				document.getElementById("price3_upsell").disabled = false;
+				document.getElementById("price3_upsell-0").value = "Y";
+
+		}
+		
+		else{
+		<CxIf cond = "EQ(cart.pole,AMERICA)">
+		<CxThen>
+		
+				document.getElementById("price3_upsell").checked = true;
+				document.getElementById("price3_upsell").disabled = true;
+				document.getElementById("price3_upsell-0").value = "Y";
+		
+		</CxThen>
+		<CxElse>
+		
+				document.getElementById("price3_upsell").checked = false;
+				document.getElementById("price3_upsell").disabled = false;
+				document.getElementById("price3_upsell-0").value = "N";
+				
+		</CxElse>	
+		</CxIf>
+		}
+		</CxThen>
+		<CxElse>
+				document.getElementById("price3_upsell").checked = false;
+				document.getElementById("price3_upsell").disabled = true;
+				document.getElementById("price3_upsell-0").value = "N";
+		</CxElse>		
+		</CxIf>
+		
+		
+		/* Simplification changes; For Ext Sell price in Options display;End*/	
+		
+		<CxForEach field="MasterUserPrefsStore.AllViewContracList" tid="loop">
+			if(document.getElementById("budgetary_doc").checked){//budgetary
+
+
+                    			document.getElementById("<CxOpVar field="loop.value"/>").disabled = true;
+				document.getElementById("<CxOpVar field="loop.value"/>").checked = false;
+				document.getElementById("<CxOpVar field="loop.value"/>-0").value = "N";
+			}else{//contractual
+
+				<CxIf cond="EQ(print_options_store.(loop.value),Y)">
+                                                         <CxThen>
+                                                                    	document.getElementById("<CxOpVar field="loop.value"/>").disabled = false;
+					document.getElementById("<CxOpVar field="loop.value"/>").checked = true;
+					document.getElementById("<CxOpVar field="loop.value"/>-0").value = "Y";
+ 				  </CxThen>
+                                                        <CxElse>
+                                                               <CxIf cond="EQ(loop.value,price5_cover)">
+				          <CxThen>
+
+                                                                              document.getElementById("<CxOpVar field="loop.value"/>").disabled = true;
+					        document.getElementById("<CxOpVar field="loop.value"/>").checked = false;
+					        document.getElementById("<CxOpVar field="loop.value"/>-0").value = "N";
+
+				             </CxThen>
+                                                                 <CxElse>
+                                      			document.getElementById("<CxOpVar field="loop.value"/>").disabled = false;
+					document.getElementById("<CxOpVar field="loop.value"/>").checked = false;
+					document.getElementById("<CxOpVar field="loop.value"/>-0").value = "N";
+                                                                  </CxElse>
+                                                               </CxIf>
+                                                     </CxElse></CxIf>
+			}
+		</CxForEach>
+
+
+
+			<CxComment>***********Changes by Shyam**********</CxComment>
+
+
+
+			<CxForEach field="MasterUserPrefsStore.AllViewcoverLetter" tid="loop">
+			if(document.getElementById("budgetary_doc").checked){//budgetary
+
+
+				document.getElementById("<CxOpVar field="loop.value"/>").disabled = true;
+				document.getElementById("<CxOpVar field="loop.value"/>").checked = false;
+				document.getElementById("<CxOpVar field="loop.value"/>-0").value = "N";
+			}else{//contractual
+		<Cxcomment>
+				<CxIf cond="EQ(print_options_store.(loop.value),Y)">
+                                                         <CxThen>
+                                                                    	document.getElementById("<CxOpVar field="loop.value"/>").disabled = false;
+					document.getElementById("<CxOpVar field="loop.value"/>").checked = true;
+					document.getElementById("<CxOpVar field="loop.value"/>-0").value = "Y";
+ 				  </CxThen>
+                                                                 <CxElse>
+                                      			document.getElementById("<CxOpVar field="loop.value"/>").disabled = false;
+					document.getElementById("<CxOpVar field="loop.value"/>").checked = false;
+					document.getElementById("<CxOpVar field="loop.value"/>-0").value = "N";
+                                                                  </CxElse>
+				</CxIf>
+		</Cxcomment>
+		
+				<CxIf cond="EQ(loop.value,investment_summary)">
+				<CxThen>
+						<CxIf cond= "EQ(cart.ACCOUNT_COUNTRY,US)">
+						<CxThen>
+							
+							document.getElementById("investment_summary").checked = false;
+							document.getElementById("investment_summary").disabled = false;
+							document.getElementById("investment_summary-0").value = "N";
+			
+						</CxThen>
+						
+						<CxElse>
+						
+							document.getElementById("investment_summary").checked = false;
+							document.getElementById("investment_summary").disabled = true;
+							document.getElementById("investment_summary-0").value = "N";
+							
+						</CxElse>
+						</CxIf>
+				</CxThen>
+				</CxIf>
+                    	}
+		</CxForEach>
+	}
+
+
+	<CxComment>***********End of R5++ Cover and Summary Page**********</CxComment>
+
+	function setField(val)
+	{
+		document.html_pre_prev.hdnFocus.value=val;
+	}
+
+
+	<CxIf Cond="NOT(NULL(extraArgs.ModifiedLocale))"><CxThen>
+
+		<CxCallSub name="getQuoteElements" domainId="cart.QUOTE_DOMAIN_ID" quoteType="cart.DESCRIPTION5" quoteCat="Equipment" locale="extraArgs.ModifiedLocale"/>
+		<CxCallSub name="getTerms" domainId="cart.QUOTE_DOMAIN_ID" locale="extraArgs.ModifiedLocale"/>
+
+		<CxForEach Field="st_Territory.Quote_Element_List" tid="loop">
+			<CxStore value="loop.value" tid="elements">
+				<CxForEach Field="elements.Value">
+					<CxIpVar Field="this.Value" Value="elements.this.Value" target="Quote_Elements"/>
+				</CxForEach>
+			</CxStore>
+		</CxForEach>
+
+		<CxForEach Field="st_Territory.Quote_Term_Keys" tid="loop">
+			<CxStore value="loop.value" tid="elements">
+				<CxForEach Field="elements.Value">
+					<CxIpVar Field="this.Value" Value="elements.this.Value" target="Quote_Terms"/>
+				</CxForEach>
+			</CxStore>
+		</CxForEach>
+
+		<CxForEach Field="st_Territory.Quote_Term_Values" tid="loop">
+			<CxStore value="loop.value" tid="elements">
+				<CxForEach Field="elements.Value">
+					<CxIpVar Field="this.Value" Value="elements.this.Value" target="Quote_Terms"/>
+				</CxForEach>
+			</CxStore>
+		</CxForEach>
+
+		<CxIpVar Field="FREIGHT_CHARGES" Value="Quote_Terms.(cart.FREIGHT_CHARGES_ID)" target="cart"/>
+		<CxIpVar Field="PAYMENT_TERMS_DESCRIPTION" Value="Quote_Terms.(cart.PAYMENT_TERMS_ID)" target="cart"/>
+		<CxIpVar Field="BILLING_TERMS_DESCRIPTION" Value="Quote_Terms.(cart.BILLING_TERMS_CODE)" target="cart"/>
+		<CxIpVar Field="INCO_TERMS_DESCRIPTION" Value="Quote_Terms.(cart.INCO_TERMS_CODE)" target="cart"/>
+
+
+		<CxIpVar Field="Locale" Value="extraArgs.ModifiedLocale" target="rb_shortdescription"/>
+		<CxIpVar Field="Locale" Value="extraArgs.ModifiedLocale" target="rb_longdescription"/>
+
+			<CxComment><CxIf Cond="NOT(EQ(extraArgs.preview_format,HTML_FORMAT))"><CxThen></CxComment>
+			document.html_pre_prev.ModifiedLocale.value='<CxOpvar field="extraArgs.ModifiedLocale"/>';
+			var locale='<CxOpVar Field="extraArgs.ModifiedLocale"/>';
+			<CxComment></CxThen></CxIf></CxComment>
+
+	</CxThen><CxElse>
+
+		<CxForEach Field="st_Territory.Quote_Element_List" tid="loop">
+			<CxStore value="loop.value" tid="elements">
+				<CxForEach Field="elements.Value">
+					<CxIpVar Field="this.Value" Value="elements.this.Value" target="Quote_Elements"/>
+				</CxForEach>
+			</CxStore>
+		</CxForEach>
+		<CxIpVar Field="Locale" Value="cart.CUSTOMER_LOCALE" target="rb_shortdescription"/>
+		<CxIpVar Field="Locale" Value="cart.CUSTOMER_LOCALE" target="rb_longdescription"/>
+		<CxIf Cond="NOT(EQ(extraArgs.preview_format,HTML_FORMAT))"><CxThen>
+			var locale='<CxOpVar Field="cart.CUSTOMER_LOCALE"/>';
+		</CxThen></CxIf>
+
+	</CxElse></CxIf>
+
+
+
+
+	<CxComment>
+	***************************************** ******** ******************************************
+	Function submitForm() will submit the form and save the QED to Cart if the QED Limit is changed.
+	*******************************************************************************************************
+	</CxComment>
+
+
+
+	function chkFlg()
+	{
+		var flgShowNetsellprice = '<CxOpVar field="cart.show_netsell_price"/>';
+
+		if(document.getElementById("show_netsell_price").disabled==false)
+		{
+			if(flgShowNetsellprice == "Y")
+			{
+				document.getElementById("show_netsell_price").checked = true;
+			}
+			else
+			{
+				document.getElementById("show_netsell_price").checked = false;
+			}
+		}
+		
+		
+		/*Simplification Chnages by Shyam for Header and footer checkbox enabling-Start*/
+			
+			<CxIf cond= "EQ(cart.ACCOUNT_COUNTRY,US)">
+			<CxThen>
+
+				document.getElementById("show_header").checked = true;
+				document.getElementById("show_header").disabled = true;
+				document.getElementById("show_header-0").value = "Y";
+				
+				document.getElementById("investment_summary").checked = false;
+				document.getElementById("investment_summary").disabled = false;
+				document.getElementById("investment_summary").value = "N";
+				document.getElementById("investment_summary-0").value = "N";
+
+			</CxThen>
+			
+			<CxElse>
+			
+				document.getElementById("investment_summary").checked = false;
+				document.getElementById("investment_summary").disabled = true;
+				document.getElementById("investment_summary").value = "N";
+				document.getElementById("investment_summary-0").value = "N";
+				
+			</CxElse>
+			</CxIf>
+
+		/*Simplification Chnages by Shyam for Header and footer checkbox enabling-End*/
+		
+
+        <CxComment>R6--Improvement In Config Presentation Requirement</CxComment>
+
+        <CxIf cond="AND(eq(print_options_store.price2,Y),eq(print_options_store.price4,N))"><CxThen>
+            document.getElementById("price4").checked = false;
+            document.getElementById("price4").disabled = true;
+            document.getElementById("price4-0").value = "N";
+
+        </CxThen>
+        <CxElseIf cond="AND(eq(print_options_store.price2,N),eq(print_options_store.price4,Y))"><CxThen>
+
+            document.getElementById("price2").checked = false;
+            document.getElementById("price2").disabled = true;
+            document.getElementById("price2-0").value = "N";
+
+        </CxThen></CxElseIf>
+        <CxElseIf cond="OR(AND(eq(print_options_store.price2,Y),eq(print_options_store.price4,Y)),AND(eq(print_options_store.price2,N),eq(print_options_store.price4,N)))"><CxThen>
+
+            if(document.getElementById("price5").disabled==false)
+            {
+            document.getElementById("price2").checked = false;
+            document.getElementById("price2").disabled = true;
+            document.getElementById("price2-0").value = "N";
+            }
+            else
+            {
+            document.getElementById("price2").checked = false;
+            document.getElementById("price2").disabled = false;
+            document.getElementById("price2-0").value = "N";
+            document.getElementById("price4").checked = false;
+            document.getElementById("price4").disabled = false;
+            document.getElementById("price4-0").value = "N";
+           }
+        </CxThen></CxElseIf></CxIf>
+
+
+         if(document.getElementById("price5").disabled==false)
+         {
+
+        <CxIf cond="AND(eq(print_options_store.price1,Y),eq(print_options_store.price5,Y))"><CxThen>
+            document.getElementById("total_discount").checked = false;
+            document.getElementById("total_discount").disabled = true;
+            document.getElementById("total_discount-0").value = "N";
+
+            document.getElementById("discount_perct").checked = false;
+            document.getElementById("discount_perct").disabled = true;
+            document.getElementById("discount_perct-0").value = "N";
+
+            document.getElementById("config_discount").checked = false;
+            document.getElementById("config_discount").disabled = true;
+            document.getElementById("config_discount-0").value = "N";
+
+           <CxIf cond="eq(print_options_store.config_list_price,Y)"><CxThen>
+
+            document.getElementById("config_list_price").checked = true;
+            document.getElementById("config_list_price").disabled = false;
+            document.getElementById("config_list_price-0").value = "Y";
+            </CxThen><CxElse>
+
+            document.getElementById("config_list_price").checked = false;
+            document.getElementById("config_list_price").disabled = false;
+            document.getElementById("config_list_price-0").value = "N";
+            </CxElse></CxIf>
+
+           <CxIf cond="eq(print_options_store.conf_contract_price,Y)"><CxThen>
+
+            document.getElementById("conf_contract_price").checked = true;
+            document.getElementById("conf_contract_price").disabled = false;
+            document.getElementById("conf_contract_price-0").value = "Y";
+            </CxThen><CxElse>
+
+            document.getElementById("conf_contract_price").checked = false;
+            document.getElementById("conf_contract_price").disabled = false;
+            document.getElementById("conf_contract_price-0").value = "N";
+            </CxElse></CxIf>
+
+           <CxIf cond="eq(print_options_store.total_extlistprice,Y)"><CxThen>
+
+            document.getElementById("total_extlistprice").checked = true;
+            document.getElementById("total_extlistprice").disabled = false;
+            document.getElementById("total_extlistprice-0").value = "Y";
+            </CxThen><CxElse>
+
+            document.getElementById("total_extlistprice").checked = false;
+            document.getElementById("total_extlistprice").disabled = false;
+            document.getElementById("total_extlistprice-0").value = "N";
+            </CxElse></CxIf>
+
+           <CxIf cond="eq(print_options_store.contrac_price5,Y)"><CxThen>
+
+            document.getElementById("contrac_price5").checked = true;
+            document.getElementById("contrac_price5").disabled = false;
+            document.getElementById("contrac_price5-0").value = "Y";
+            </CxThen><CxElse>
+
+            document.getElementById("contrac_price5").checked = false;
+            document.getElementById("contrac_price5").disabled = false;
+            document.getElementById("contrac_price5-0").value = "N";
+            </CxElse></CxIf>
+
+            <CxIf cond="eq(print_options_store.price2,Y)"><CxThen>
+                    document.getElementById("price2").checked = false;
+                    document.getElementById("price2").disabled = true;
+                    document.getElementById("price2-0").value = "N";
+                    document.getElementById("price4").checked = false;
+                    document.getElementById("price4").disabled = false;
+                    document.getElementById("price4-0").value = "N";
+              </CxThen></CxIf>
+
+        </CxThen>
+        <CxElseIf cond="AND(eq(print_options_store.price1,Y),eq(print_options_store.price5,N))"><CxThen>
+
+
+            document.getElementById("total_discount").checked = false;
+            document.getElementById("total_discount").disabled = true;
+            document.getElementById("total_discount-0").value = "N";
+
+            document.getElementById("discount_perct").checked = false;
+            document.getElementById("discount_perct").disabled = true
+            document.getElementById("discount_perct-0").value = "N";
+
+            document.getElementById("config_discount").checked = false;
+            document.getElementById("config_discount").disabled = true;
+            document.getElementById("config_discount-0").value = "N";
+
+            document.getElementById("conf_contract_price").checked = false;
+            document.getElementById("conf_contract_price").disabled = true;
+            document.getElementById("conf_contract_price-0").value = "N";
+
+            document.getElementById("contrac_price5").checked = false;
+            document.getElementById("contrac_price5").disabled = true;
+            document.getElementById("contrac_price5-0").value = "N";
+
+           <CxIf cond="eq(print_options_store.config_list_price,Y)"><CxThen>
+
+            document.getElementById("config_list_price").checked = true;
+            document.getElementById("config_list_price").disabled = false;
+            document.getElementById("config_list_price-0").value = "Y";
+            </CxThen><CxElse>
+
+            document.getElementById("config_list_price").checked = false;
+            document.getElementById("config_list_price").disabled = false;
+            document.getElementById("config_list_price-0").value = "N";
+            </CxElse></CxIf>
+
+           <CxIf cond="eq(print_options_store.total_extlistprice,Y)"><CxThen>
+
+            document.getElementById("total_extlistprice").checked = true;
+            document.getElementById("total_extlistprice").disabled = false;
+            document.getElementById("total_extlistprice-0").value = "Y";
+            </CxThen><CxElse>
+
+            document.getElementById("total_extlistprice").checked = false;
+            document.getElementById("total_extlistprice").disabled = false;
+            document.getElementById("total_extlistprice-0").value = "N";
+            </CxElse></CxIf>
+
+
+            <CxIf cond="eq(print_options_store.price2,Y)"><CxThen>
+                    document.getElementById("price2").checked = false;
+                    document.getElementById("price2").disabled = true;
+                    document.getElementById("price2-0").value = "N";
+                    document.getElementById("price4").checked = false;
+                    document.getElementById("price4").disabled = false;
+                    document.getElementById("price4-0").value = "N";
+              </CxThen></CxIf>
+
+
+        </CxThen></CxElseIf>
+
+       <CxElseIf cond="AND(eq(print_options_store.price1,N),eq(print_options_store.price5,Y))"><CxThen>
+
+
+           <CxIf cond="eq(print_options_store.total_discount,Y)"><CxThen>
+
+            document.getElementById("total_discount").checked = true;
+            document.getElementById("total_discount").disabled = false;
+            document.getElementById("total_discount-0").value = "Y";
+            </CxThen><CxElse>
+
+            document.getElementById("total_discount").checked = false;
+            document.getElementById("total_discount").disabled = false;
+            document.getElementById("total_discount-0").value = "N";
+            </CxElse></CxIf>
+
+           <CxIf cond="eq(print_options_store.discount_perct,Y)"><CxThen>
+
+            document.getElementById("discount_perct").checked = true;
+            document.getElementById("discount_perct").disabled = false;
+            document.getElementById("discount_perct-0").value = "Y";
+            </CxThen><CxElse>
+
+            document.getElementById("discount_perct").checked = false;
+            document.getElementById("discount_perct").disabled = false;
+            document.getElementById("discount_perct-0").value = "N";
+            </CxElse></CxIf>
+
+           <CxIf cond="eq(print_options_store.config_discount,Y)"><CxThen>
+
+            document.getElementById("config_discount").checked = true;
+            document.getElementById("config_discount").disabled = false;
+            document.getElementById("config_discount-0").value = "Y";
+            </CxThen><CxElse>
+
+            document.getElementById("config_discount").checked = false;
+            document.getElementById("config_discount").disabled = false;
+            document.getElementById("config_discount-0").value = "N";
+            </CxElse></CxIf>
+
+            document.getElementById("config_list_price").checked = false;
+            document.getElementById("config_list_price").disabled = true;
+            document.getElementById("config_list_price-0").value = "N";
+
+            document.getElementById("conf_contract_price").checked = false;
+            document.getElementById("conf_contract_price").disabled = true;
+            document.getElementById("conf_contract_price-0").value = "N";
+
+            document.getElementById("total_extlistprice").checked = false;
+            document.getElementById("total_extlistprice").disabled = true;
+            document.getElementById("total_extlistprice-0").value = "N";
+
+           <CxIf cond="eq(print_options_store.contrac_price5,Y)"><CxThen>
+
+            document.getElementById("contrac_price5").checked = true;
+            document.getElementById("contrac_price5").disabled = false;
+            document.getElementById("contrac_price5-0").value = "Y";
+            </CxThen><CxElse>
+
+            document.getElementById("contrac_price5").checked = false;
+            document.getElementById("contrac_price5").disabled = false;
+            document.getElementById("contrac_price5-0").value = "N";
+            </CxElse></CxIf>
+
+            <CxIf cond="NOT(eq(print_options_store.price4,Y))"><CxThen>
+                    document.getElementById("price2").checked = false;
+                    document.getElementById("price2").disabled = false;
+                    document.getElementById("price2-0").value = "N";
+            </CxThen></CxIf>
+
+          <CxIf cond="eq(print_options_store.price2,Y)"><CxThen>
+                  if(document.getElementById("price4").disabled==true)
+                   {
+                    document.getElementById("price2").checked = true;
+                    document.getElementById("price2").disabled = false;
+                    document.getElementById("price2-0").value = "Y";
+                   }
+           </CxThen>
+          </CxIf>
+
+
+        </CxThen></CxElseIf>
+
+          <CxElseIf cond="AND(eq(print_options_store.price1,N),eq(print_options_store.price5,N))"><CxThen>
+               if((document.getElementById("price4").checked==false) && (document.getElementById("price4").disabled==false) && document.getElementById("price2").checked==false )
+                   {
+                    document.getElementById("price2").checked = false;
+                    document.getElementById("price2").disabled = false;
+                    document.getElementById("price2-0").value = "N";
+                   }
+        </CxThen></CxElseIf>
+</CxIf>
+   }
+
+    }
+
+
+	function submitForm(pageid){
+			if(document.html_pre_prev.page_loaded.value <1)
+				return false;
+
+		<CxComment>R5 - Edit New Account Workflow</CxComment>
+
+			var acAddentryVal = document.getElementById("acAddentry").value;
+			var chkFlgInCrt = '<CxOpVar field="cart.chkFlag"/>';
+			var savdACNmInCrt = "<CxOpVar field="cart.ac_name"/>";
+			//changed the assignment wiht double quotes for case G02741806
+
+			document.getElementById("ac_cntry-0").value = document.getElementById("ac_cntry").innerText;
+
+			if(acAddentryVal!="")
+			{
+				document.getElementById("ac_name-0").value = document.getElementById("ac_name").innerText;
+				document.getElementById("edt_by-0").value = document.getElementById("edt_by").innerText;
+				var accEntryArray = (document.getElementById("acAddentry").value).split("<BR/>");
+				var cntr = accEntryArray.length;
+
+				if(cntr==4)
+				{
+					if(accEntryArray[0]!="")
+					{
+						document.getElementById("ac_cntry1-0").value = accEntryArray[0];
+					}
+
+					if(accEntryArray[1]!="")
+					{
+						document.getElementById("ac_cntry2-0").value = accEntryArray[1];
+					}
+
+					if(accEntryArray[2]!="")
+					{
+						document.getElementById("ac_cntry3-0").value = accEntryArray[2];
+					}
+
+					if(accEntryArray[3]!="")
+					{
+						document.getElementById("ac_cntry4-0").value = accEntryArray[3];
+					}
+				}
+
+				if(cntr==3)
+				{
+					if(accEntryArray[0]!="")
+					{
+						document.getElementById("ac_cntry1-0").value = accEntryArray[0];
+					}
+
+					if(accEntryArray[1]!="")
+					{
+						document.getElementById("ac_cntry2-0").value = accEntryArray[1];
+					}
+
+					if(accEntryArray[2]!="")
+					{
+						document.getElementById("ac_cntry3-0").value = accEntryArray[2];
+					}
+				}
+
+				else if(cntr==2)
+				{
+					if(accEntryArray[0]!="")
+					{
+						document.getElementById("ac_cntry1-0").value = accEntryArray[0];
+					}
+
+					if(accEntryArray[1]!="")
+					{
+						document.getElementById("ac_cntry2-0").value = accEntryArray[1];
+					}
+				}
+
+				else if(cntr==1)
+				{
+					if(accEntryArray[0]!="")
+					{
+						document.getElementById("ac_cntry1-0").value = accEntryArray[0];
+					}
+				}
+			}
+			else if(acAddentryVal=="" || savdACNmInCrt!="")
+			{
+					document.getElementById("ac_cntry1-0").value = '<CxOpVar field="cart.ac_cntry1"/>';
+					document.getElementById("ac_cntry2-0").value = '<CxOpVar field="cart.ac_cntry2"/>';
+					document.getElementById("ac_cntry3-0").value = '<CxOpVar field="cart.ac_cntry3"/>';
+					document.getElementById("ac_cntry4-0").value = '<CxOpVar field="cart.ac_cntry4"/>';
+					document.getElementById("ac_name-0").value = "<CxOpVar field="cart.ac_name"/>";
+					//changed the assignment wiht double quotes for case G02741806
+					document.getElementById("edt_by-0").value = '<CxOpVar field="cart.edt_by"/>';
+			}
+
+		<CxComment>R5 - Edit New Account Workflow Ends</CxComment>
+
+			if(!CommonCheck())
+				return;
+
+
+			var val	=	escape(document.html_pre_prev.elements['free_text_entry-0'].value);
+			//alert("before for loop val Value ::: " + val);
+			for(i=0; i<val.length; i++){
+				if(val.indexOf("%0D%0A") > -1){
+					val=val.replace("%0D%0A","<BR/>");
+				}
+					if(val.indexOf("%26") > -1){
+					val=val.replace("%26","&amp;");
+				}
+				if(val.indexOf("%3C") > -1){
+					val=val.replace("%3C","&#60;");
+				}
+				if(val.indexOf("%3E") > -1){
+					val=val.replace("%3E","&#62;");
+				}
+			}
+			//alert("after for loop val Value ::: " + val);
+			document.html_pre_prev.elements['free_text-0'].value	= unescape(val);
+			//alert("after for loop val Value after unescaping::: " + val);
+			//alert("after for loop document.html_pre_prev.elements['free_text-0'].value Value after unescaping::: " + document.html_pre_prev.elements['free_text-0'].value);
+			document.html_pre_prev.elements['QUOTE_EXPIRATION_DATE-0'].value	= document.html_pre_prev.QUOTE_EXPIRATION_DATE_DES.value;
+			if(document.html_pre_prev.elements['free_text-0'].value=='')
+				document.html_pre_prev.elements['free_text-0'].value	= 'null';
+			// Simplification changes; handling the escape charaters for cover letter text area; start
+			
+			<CxIf cond= "EQ(cart.ACCOUNT_COUNTRY,US)">
+			<CxThen>
+			var val1	=	escape(document.html_pre_prev.elements['cover_free_text_entry-0'].value);
+			//alert("before for loop val1 Value ::: " + val1);
+			 for(i=0; i<val1.length; i++){
+				if(val1.indexOf("%0D%0A") > -1){
+					val1=val1.replace("%0D%0A","<BR/>");
+				}
+					if(val1.indexOf("%26") > -1){
+					val1=val1.replace("%26","&amp;");
+				}
+				if(val1.indexOf("%3C") > -1){
+					val1=val1.replace("%3C","&#60;");
+				}
+				if(val1.indexOf("%3E") > -1){
+					val1=val1.replace("%3E","&#62;");
+				}
+			}
+			//alert("after for loop val1 Value before unescaping::: " + val1);
+			document.html_pre_prev.elements['cover_free_text-0'].value	= unescape(val1);
+
+			/* commented below code for keeping cover_free_text as blank 50****451
+			if(document.html_pre_prev.elements['cover_free_text-0'].value=='')
+				document.html_pre_prev.elements['cover_free_text-0'].value	= 'null';*/
+			
+			//alert("after for loop val1 Value ::: " + val1);
+			//alert("after for loop document.html_pre_prev.elements['cover_free_text-0'].value Value ::: " + document.html_pre_prev.elements['cover_free_text-0'].value);
+				</CxThen>
+				</CxIf>
+				// Simplification changes; handling the escape charaters for cover letter text area; end
+		<CxIf cond="NOT(Null(cart.db_date))"><CxThen>
+				var finaldate		=	'<CxOpVar Field="cart.db_date"/>';
+			</CxThen><CxElse>
+				var finaldate		=	'<CxOpVar Field="quote.quoteInfo\\.quote_today_date"/>';
+			</CxElse></CxIf>
+
+			document.html_pre_prev.elements['formated_db_date-0'].value	= finaldate;
+		//	document.html_pre_prev.invoke.value	= pageid;
+		//	document.html_pre_prev.elements['QUOTE_EXPIRATION_DATE-0'].value	= document.html_pre_prev.QUOTE_EXPIRATION_DATE_DES.value ;
+
+			startAction();
+			document.html_pre_prev.submit();
+			//return false;
+		}
+
+
+
+	// Added to merge
+	function reLoad(){
+			var f	= document.html_pre_prev.page_loaded.value;
+
+			if(document.html_pre_prev.page_loaded.value < 1)
+				 return false;
+
+			<CxIf cond="NOT(Null(cart.QED_LIMIT))"><CxThen>
+
+				var currentDate1 = '<CxOpVar field="cart.QUOTE_START_DATE" type="date" format="MM-dd-yy"/>';
+				var	inputMO		=	currentDate1.substring(0,2) - 1;
+				var	inputDA		=	currentDate1.substring(3,5);
+				var	inputY		=	currentDate1.substring(6,8);
+				currentDate1	=	new Date(inputY,inputMO,inputDA);
+
+				var expdate22		=	'<CxOpVar Field="cart.QED_LIMIT"/>';
+				var currexpdate1	=	escape(document.html_pre_prev.QUOTE_EXPIRATION_DATE_DES.value);
+
+				if(!(validateExpirationDate(currentDate1,expdate22,currexpdate1)))
+					return false;
+			</CxThen><CxElse>
+				if(!(validateDateDaysFromToday(document.html_pre_prev.QUOTE_EXPIRATION_DATE_DES,90)))
+					return false;
+			</CxElse></CxIf>
+
+
+
+			if(!CommonCheck())
+				return;
+
+
+			document.html_pre_prev.elements['QUOTE_EXPIRATION_DATE-0'].value = document.html_pre_prev.QUOTE_EXPIRATION_DATE_DES.value ;
+
+			document.html_pre_prev.pageId.value	= 'print_option';
+			html_pre_prev.target				= "_self";
+
+			startAction();
+			document.html_pre_prev.submit();
+		}
+
+
+	function CommonCheck()
+	{
+		if ((!document.html_pre_prev.elements('long_desc').checked)&&(!document.html_pre_prev.elements('short_desc').checked)){
+			alert("<CxOpVar Field="ui_comp.ALRT_NO_DESC"/>");
+			document.html_pre_prev.elements('long_desc').focus();
+			return  false ;
+		}
+		return true;
+	}
+
+		function validateExpirationDate(QUOTE_START_DATE,exp_date,new_exp_date){
+
+				/*  exp_date is the set expiration date */
+				var maxDate = exp_date;
+
+				var	maxMON	=	maxDate.substring(0,2) - 1;
+				var	maxDAY	=	maxDate.substring(3,5);
+				var	maxYR	=	maxDate.substring(6,10);
+
+				maxDate				=	new Date(maxYR,maxMON,maxDAY);
+
+				var maxDateDisplay = (maxMON+1) + "-" + maxDAY + "-" + maxYR;
+
+				/*  QUOTE_START_DATE is Quote Creation Date */
+
+				var	currentDate		=	QUOTE_START_DATE;
+				var currentMON		=	currentDate.getMonth();
+				var currentDAY		=	currentDate.getDate();
+				var currentYR			=	currentDate.getYear();
+				currentDate			=	new Date(currentYR,currentMON,currentDAY);
+
+				var currentDateDisplay = (currentMON+1) + "-" + currentDAY + "-" + currentYR;
+
+				/*  new_exp_date is the date selected by the sales rep */
+
+
+				var inputDate = new_exp_date;
+
+
+				var	inputMON	=	inputDate.substring(0,2) - 1;
+				var	inputDAY	=	inputDate.substring(3,5);
+				var	inputYR		=	inputDate.substring(6,10);
+
+				inputDate		=	new Date(inputYR,inputMON,inputDAY);
+
+
+				if (!(inputDate >= currentDate)){
+					alert("<CxOpVar field="ui_comp.ALRT_Quote_Expiration_date3"/>("+currentDateDisplay+")");
+					return false;
+				}
+				if (!(inputDate <= maxDate)){
+					alert("<CxOpVar field="ui_comp.ALRT_Quote_Expiration_date2"/>("+maxDateDisplay+")");
+					return false;
+				}
+				return true;
+			}
+
+	function textLimit(field, maxlen){
+		if (field.value.length > maxlen) {
+			//ALRT_REDU_NOTES=Please reduce the size of Customer Notes
+			alert("<CxOpVar Field="ui_comp.ALRT_REDU_NOTES"/>");
+		}
+	}
+
+
+	function Localesubmit(obj){
+		document.html_pre_prev.elements['locale-1'].value=document.html_pre_prev.elements('CUSTOMER_LOCALE-0').options[obj.selectedIndex].value;
+		document.html_pre_prev.ModifiedLocale.value=document.html_pre_prev.elements('CUSTOMER_LOCALE-0').options[obj.selectedIndex].value;
+		document.html_pre_prev.elements['CUSTOMER_LOCALE_NAME-0'].value=document.html_pre_prev.elements('CUSTOMER_LOCALE-0').options[obj.selectedIndex].text;
+		document.html_pre_prev.elements['user_locale_pref-0'].value=document.html_pre_prev.elements('CUSTOMER_LOCALE-0').value;
+	}
+
+	<CxComment>
+	***************************************** Soumya (18-Nov-04) ******************************************
+	Function captureDate() will capture the date in the QED Limit textbox, before the calendar pops up.
+	*******************************************************************************************************
+	</CxComment>
+
+	var beforeDate = "";
+
+	function captureDate()
+	{
+		beforeDate = document.html_pre_prev.QUOTE_EXPIRATION_DATE_DES.value;
+		window.onfocus = DateValidations;
+	}
+
+	<CxComment>
+	***************************************** Soumya (18-Nov-04) ******************************************
+	Function DateValidations() will validate the QED, when changed
+	*******************************************************************************************************
+	</CxComment>
+
+	function DateValidations()
+	{
+		var objForm = document.html_pre_prev;
+		if (document.html_pre_prev.QUOTE_EXPIRATION_DATE_DES.value==''){
+			//ALRT_Select_Qte_Exp_Date=Please select the Quote expiration date.
+			alert("<CxOpVar Field="ui_comp.ALRT_Select_Qte_Exp_Date"/>");
+			objForm.elements['QUOTE_EXPIRATION_DATE_DES'].value = beforeDate;
+		}
+
+		<CxIf cond="NOT(Null(cart.QED_LIMIT))"><CxThen>
+			var currentDate2 = '<CxOpVar field="cart.QUOTE_START_DATE" type="date" format="MM-dd-yyyy"/>';
+			var	inputMONN	=	currentDate2.substring(0,2) - 1;
+			var	inputDAYY	=	currentDate2.substring(3,5);
+			var	inputYRR	=	currentDate2.substring(6,10);
+
+			currentDate2				=	new Date(inputYRR,inputMONN,inputDAYY);
+
+			var expdate11		=	'<CxOpVar Field="cart.QED_LIMIT"/>';
+			var currexpdate	=	escape(document.html_pre_prev.QUOTE_EXPIRATION_DATE_DES.value);
+			if(!(validateExpirationDate(currentDate2,expdate11,currexpdate)))
+				objForm.elements['QUOTE_EXPIRATION_DATE_DES'].value = beforeDate;
+		</CxThen><CxElse>
+			if(!(validateDateDaysFromToday(document.html_pre_prev.QUOTE_EXPIRATION_DATE_DES,90)))
+				objForm.elements['QUOTE_EXPIRATION_DATE_DES'].value = beforeDate;
+		</CxElse></CxIf>
+
+	}
+
+		function openQuoteExampleWindow(url,h,w){
+			var p = "height="+ h +",width="+ w +",resizable=yes,scrollbars=yes";
+			window.open(url,"QuoteExample",p);
+		}
+
+
+		var chkArray = new Array(2);
+
+		function alterSelection(indexClicked){
+			chkArray[2-indexClicked][0].checked	= false;
+			chkArray[2-indexClicked][1].value	= "N";
+			chkArray[indexClicked-1][1].value	= "Y";
+
+			if(indexClicked==1)//Budgetary
+			{
+				if(document.getElementById("show_netsell_price").disabled==true)
+				{
+					document.getElementById("qtTypeName-0").value = "Budgetary";
+					document.getElementById("show_netsell_price").disabled = false;
+				}
+			}
+			else//Contractual
+			{
+				if(document.getElementById("show_netsell_price").disabled==false)
+				{
+					document.getElementById("qtTypeName-0").value = "Contractual";
+					document.getElementById("show_netsell_price").checked = true;
+					document.getElementById("show_netsell_price").disabled = true;
+				}
+			}
+
+
+			budgContractSel();
+
+			chkCoverPrefs('frombody');
+
+		}
+
+
+	</script>
+
+</head>
+
+
+<body onload="chkFlg();budgContractSel();chkCoverPrefs('frombody')">
+	<div id="waitCursor">
+	<CxComment>
+	**********************************************************
+	Form that can be submitted to go to quote summary page
+	**********************************************************
+	</CxComment>
+	<!--
+<Script language="Javascript">alert("CommonStore.Equipment :::  <CxOpVar field="CommonStore.Equipment"/>");</Script>
+-->
+	<form name="frm_QuoteSummary" action="<CxOpVar Field="Session.servletURL"/>" method="post">
+		<CxCommand name="ToPage" pageId="quote_summary_detail">
+			<CxOpVar field="this.valueHTMLForm"/>
+		</CxCommand>
+	</form>
+	<CxCallSub Name="getCartIncompleteFlag"/>
+	<CxIf cond="GT(CommonStore.CartIncompleteFlag,0)">
+		<CxThen>
+			<script language="JavaScript" type="text/javascript">
+			<!--alert("This Quote contains an Incomplete Configuration. Please edit the Configuration before continuing.");
+				document.frm_QuoteSummary.submit();// -->
+			</script>
+		</CxThen>
+	</CxIf>
+
+	<form name="html_pre_prev"  action="<CxOpVar Field="Session.servletURL"/>" method="post"  style="height:100%;">
+
+		<CxComment>Hidden form field attributes</CxComment>
+		<input type="hidden" name="invoke"				value="">
+		<input type="hidden" name="page_loaded"			value="1">
+		<input type="hidden" name="no_pricecol"			value="">
+		<input type="hidden" name="no_pricecol_upsell"	value="">
+		<input type="hidden" name="netPrice"			value="<CxOpvar field="CommonStore.netPrice"/>">
+		<input type="hidden" name="netExtPrice"			value="<CxOpvar field="CommonStore.netExtPrice"/>">
+		<input type="hidden" name="totalExtlistprice"	value="<CxOpvar field="CommonStore.totalExtlistprice"/>">
+		<input type="hidden" name="totalDiscount"		value="<CxOpvar field="CommonStore.totalDiscount"/>">
+		<input type="hidden" name="discountPerct"		value="<CxOpvar field="CommonStore.discountPerct"/>">
+		<input type="hidden" name="cb_priceval0"		value="1">
+		<input type="hidden" name="cb_priceval0_upsell"	value="1">
+		<input type="hidden" name="showHeader"			value="<CxOpvar field="CommonStore.showHeader"/>">
+		<input type="hidden" name="summaryBreak"		value="<CxOpvar field="CommonStore.summaryBreak"/>">
+		<input type="hidden" name="optionBreak"			value="<CxOpvar field="CommonStore.optionBreak"/>">
+		<input type="hidden" name="hdnFocus"			value="">
+		<input type="hidden" name="cb_priceval1"		value="<CxOpvar field="CommonStore.cb_priceval1"/>"/>
+		<input type="hidden" name="cb_priceval2"		value="<CxOpvar field="CommonStore.cb_priceval2"/>"/>
+		<input type="hidden" name="cb_priceval3"		value="<CxOpvar field="CommonStore.cb_priceval3"/>"/>
+		<input type="hidden" name="item_no_selected"	value="<CxOpvar field="CommonStore.item_no_selected"/>"/>
+		<input type="hidden" name="cb_priceval1_upsell"	value="<CxOpvar field="CommonStore.cb_priceval1_upsell"/>"/>
+		<cxComment>********Simplification enhancement*****************************</cxComment>
+		<input type="hidden" name="cb_initialVal_toAccept"	value="<CxOpvar field="CommonStore.cb_initialVal_toAccept"/>"/>
+		<input type="hidden" name="cb_priceval2_upsell"	value="<CxOpvar field="CommonStore.cb_priceval2_upsell"/>"/>
+		<input type="hidden" name="cb_priceval3_upsell"	value="<CxOpvar field="CommonStore.cb_priceval3_upsell"/>"/>
+		<input type="hidden" name="quote_kind-0"		value="equipment"/>
+		<input type="hidden" name="Acc_Attach-0">
+		<input type="hidden" name="ModifiedLocale" value="<CxOpvar field="cart.CUSTOMER_LOCALE"/>">
+		<input type="hidden" name="CUSTOMER_LOCALE_NAME-0">
+		<input type="hidden" name="QUOTE_EXPIRATION_DATE-0">
+		<input type="hidden" name="QUOTE_DOMAIN_ID-0"	value="<CxOpvar field="cart.QUOTE_DOMAIN_ID"/>">
+		<input type="hidden" name="formated_db_date-0">
+		<input type="hidden" name="price_column_upsell"	value="">
+		<input type="hidden" value="" name='price_column<CxOpVar field="_upsell" cond="EQ(LSubRenderColumnHeaders.UPSELL,true)"/>'>
+		<input type="hidden" name="QUOTE_PRINT_PREFERENCES_FLAG-0" value="1">
+		<input type="hidden" name="hdnFocus" value=""/>
+
+	<table width="100%"  border="0" cellpadding="0" cellspacing="0">
+
+
+	<tr>
+		<td nowrap class="portlet-section-header-left" colspan="3">
+			<CxOpVar Field="ui_comp.ALT_PRINT_OPTIONS"/></td>
+			<CxCallSub Name="qteListLink"/>
+	</tr>
+
+	<tr>
+		<td nowrap align="right" colspan="4" class="portlet-form-label-right">
+
+			<CxComment>Quote Reset Link Added - R4U</CxComment>
+			<a onClick="startAction();"href="<CxCommand name="ToPage" pageid="print_option"><CxOpVar field="this.valueHTMLHref"/></CxCommand>&ResetToUP=1" class="swb-button-icon">
+				<img border="0" src="<CxOpVar Field="CommonStore.ImagePath"/>/reset.gif" alt="<CxOpVar Field="ui_comp.ALT_Reset"/>">
+					<CxOpVar Field="ui_comp.ALT_Reset"/>
+			</a>
+
+			<a onClick="startAction();"href="<CxCommand name="ToPage" pageid="quote_summary_detail"><CxOpVar field="this.valueHTMLHref"/></CxCommand>" class="swb-button-icon">
+			<img border="0" src="<CxOpVar Field="CommonStore.ImagePath"/>/left_arrow.gif" alt="<CxOpVar Field="ui_comp.ALT_Back_To_Qte_Summary"/>">
+			<CxOpVar Field="ui_comp.NAV_Qte"/></a>
+
+
+			<CxComment>Quote Example Link Added - R4U</CxComment>
+			<CxIf Cond="EQ(CommonStore.QUOTE_LAYOUT_TYPE,American)"><CxThen>
+				<a href="javascript:openQuoteExampleWindow('/sales/nosso/QuoteExampleUS.html',700,807)" class="swb-button-icon">
+			</CxThen><CxElse>
+				<a href="javascript:openQuoteExampleWindow('/sales/nosso/QuoteExampleEU.html',700,807)" class="swb-button-icon">
+			</CxElse></CxIf>
+			<CxComment>/sales/framework/skins/basic/images/gems/</CxComment>
+					<img border="0" src="<CxOpVar field="CommonStore.ImagePath"/>/quote_example.gif" alt="<CxOpVar field="ui_comp.lbl_exmp_qte"/>">
+					<CxOpVar field="ui_comp.lbl_exmp_qte"/>
+				</a>
+
+
+			<a href="#" class="swb-button-icon" onclick="javascript:submitForm('fop');">
+				<img border="0" src="<CxOpVar Field="CommonStore.ImagePath"/>/quote_print.gif" alt="<CxOpVar Field="ui_comp.NAV_Quote_PDF"/>">
+				<CxOpVar Field="ui_comp.NAV_Quote_PDF"/>
+			</a>
+		</td>
+
+	</tr>
+
+<CxComment>R5 - Edit New Account Workflow</CxComment>
+
+	<CxComment>R5-Quote Process Simplify</CxComment>
+	<tr>
+		<TD nowrap class="portlet-form-field-label" colspan="4">
+			<CxForEach tid="list" field="MasterUserPrefsStore.AllHeaderPrefsList">
+				<input type="radio" name='<CxOpVar field="list.value"/>' value='<CxOpVar field="print_options_store.(list.value)"/>' <CxOpVar field="checked" cond="eq(print_options_store.(list.value),Y)"/> onclick="javascript:alterSelection(<CxOpVar field="list.loopcount"/>);"><CxOpVar field="print_option_label_store.(list.value)"/>
+				<input type="hidden" name='<CxOpVar field="list.value"/>-0' value='<CxOpVar field="print_options_store.(list.value)"/>'>
+				<script language="JavaScript">
+					<CxIf cond="eq(list.loopcount,1)"><CxThen>
+						chkArray[0]	= new Array(2);
+						chkArray[1]	= new Array(2);
+					</CxThen></CxIf>
+					javascript:chkArray[<CxOpVar field="list.loopcount"/>-1][0]=document.html_pre_prev.<CxOpVar field="list.value"/>;
+					javascript:chkArray[<CxOpVar field="list.loopcount"/>-1][1]=eval("document.html_pre_prev.elements['<CxOpVar field="list.value"/>-0']");
+				</script>
+			</CxForEach>
+		</TD>
+	</tr>
+
+	<CxComment>START Formatting Account Details Display</CxComment>
+	<tr>
+      <TABLE class=swb-table-container cellSpacing=1 cellPadding=0 width="100%" border=0>
+        <TBODY>
+        <TR>
+		    <TD class=portlet-form-field-label colSpan=4>
+		    <B><CxOpVar Field="ui_comp.HDR_Qte_AccntDetails"/></B>
+		    </TD>
+        </TR>
+        <TR>
+		    <TD class=portlet-table-header width="25%">
+		    <B><CxOpVar Field="ui_comp.HDR_NewQte_AccName"/></B>
+		    </TD>
+		    <TD class=portlet-table-header width="35%">
+		    <B><CxOpVar Field="ui_comp.HDR_NewQte_AccAddr"/></B>
+		    </TD>
+		    
+		    <CxComment>UCM taxId dispay Simplification July release changes; 502266788;Archana Pandey;start</CxComment>
+		    <CxIf cond="MEMBER(cart.ACCOUNT_COUNTRY,[BR,MX,AG,AI,AN,AR,AW,BB,BL,BZ,BM,BO,BS,CL,CO,CR,CU,DM,DO,EC,GD,GP,GT,GY,HN,HT,JM,KN,KY,LC,MQ,NI,PA,PE,PR,PY,SV,TC,TT,UY,VC,SR,VE,VG,VI])">
+				<CxThen>
+		   			 <TD class=portlet-table-header width="13%">
+		  			  <B><CxOpVar Field="ui_comp.HDR_NewQte_AccTaxId"/></B>
+		  		  	</TD>
+		    	</CxThen>	
+		   </CxIf>    
+		    <CxComment>UCM taxId dispay Simplification July release changes; 502266788;Archana Pandey;end</CxComment>
+		    <TD class=portlet-table-header width="18%">
+		    <B><CxOpVar Field="ui_comp.HDR_NewQte_AccEdtBy"/></B>
+		    </TD>
+		    <TD class=portlet-table-header width="9%">
+		    &nbsp;
+		    </TD>
+        </TR>
+        <TR>
+		    <TD id="ac_name" class="portlet-form-label-right" width="25%">
+			<CxIf Cond="NOT(NULL(cart.ac_name))"><CxThen>
+				<CxOpVar field="cart.ac_name"/>
+			</CxThen><CxElse>
+				<CxOpVar field="cart.ACCOUNT_NAME"/>
+			</CxElse></CxIf>
+		    </TD>
+		    <TD id="ac_cntry" class="portlet-form-label-right" width="35%">
+			<CxIf Cond="NOT(NULL(cart.ac_name))"><CxThen>
+				<CxIf Cond="NOT(NULL(cart.ac_cntry1))"><CxThen>
+					<CxOpVar field="cart.ac_cntry1" Cond="NOT(NULL(cart.ac_cntry1))"/>
+				</CxThen></CxIf>
+				<CxIf Cond="NOT(NULL(cart.ac_cntry2))"><CxThen>
+					<BR/><CxOpVar field="cart.ac_cntry2" Cond="NOT(NULL(cart.ac_cntry2))"/>
+				</CxThen></CxIf>
+				<CxIf Cond="NOT(NULL(cart.ac_cntry3))"><CxThen>
+					<BR/><CxOpVar field="cart.ac_cntry3" Cond="NOT(NULL(cart.ac_cntry3))"/>
+				</CxThen></CxIf>
+				<CxIf Cond="NOT(NULL(cart.ac_cntry4))"><CxThen>
+					<BR/><CxOpVar field="cart.ac_cntry4" Cond="NOT(NULL(cart.ac_cntry4))"/>
+				</CxThen></CxIf>
+			</CxThen><CxElse>
+				<CxIf Cond="NOT(NULL(cart.ACCT_ADDRESSLINE_1))"><CxThen>
+					<CxOpVar field="cart.ACCT_ADDRESSLINE_1" Cond="NOT(NULL(cart.ACCT_ADDRESSLINE_1))"/>
+				</CxThen></CxIf>
+				<CxIf Cond="NOT(NULL(cart.ACCT_ADDRESSLINE_2))"><CxThen>
+					<BR/><CxOpVar field="cart.ACCT_ADDRESSLINE_2" Cond="NOT(NULL(cart.ACCT_ADDRESSLINE_2))"/>
+				</CxThen></CxIf>
+				<CxIf Cond="NOT(NULL(cart.ACCT_ADDRESSLINE_3))"><CxThen>
+					<BR/><CxOpVar field="cart.ACCT_ADDRESSLINE_3" Cond="NOT(NULL(cart.ACCT_ADDRESSLINE_3))"/>
+				</CxThen></CxIf>
+				<CxIf Cond="NOT(NULL(cart.ACCT_ADDRESSLINE_4))"><CxThen>
+					<BR/><CxOpVar field="cart.ac_cntry1" Cond="NOT(NULL(cart.ACCT_ADDRESSLINE_4))"/>
+				</CxThen></CxIf>
+			</CxElse></CxIf>
+		    </TD>
+		    <CxComment>UCM taxId dispay Simplification July release changes; 502266788;Archana Pandey;start</CxComment>
+		    	<CxIf cond="MEMBER(cart.ACCOUNT_COUNTRY,[BR,MX,AG,AI,AN,AR,AW,BB,BL,BZ,BM,BO,BS,CL,CO,CR,CU,DM,DO,EC,GD,GP,GT,GY,HN,HT,JM,KN,KY,LC,MQ,NI,PA,PE,PR,PY,SV,TC,TT,UY,VC,SR,VE,VG,VI])">
+					<CxThen>
+		     			<TD id="ac_name" class="portlet-form-label-right" width="13%">
+							<CxIf Cond="NOT(NULL(cart.ACC_TAX_ID))">
+							<CxThen>
+								<CxOpVar field="cart.ACC_TAX_ID"/>
+							</CxThen>
+							</CxIf>
+		   				</TD>
+		    		</CxThen>
+		    	</CxIf>
+		     <CxComment>UCM taxId dispay Simplification July release changes; 502266788;Archana Pandey;end</CxComment>
+		    <TD id="edt_by" class="portlet-form-label-right" width="18%">
+			<CxOpVar field="cart.edt_by" Cond="NOT(NULL(cart.edt_by))"/>
+		    </TD>
+			<input type="hidden" name="ac_name-0">
+			<input type="hidden" name="ac_cntry-0">
+			<input type="hidden" name="acAddentry">
+			<input type="hidden" name="acAddentryCrt-0">
+			<input type="hidden" name="ac_cntry1-0">
+			<input type="hidden" name="ac_cntry2-0">
+			<input type="hidden" name="ac_cntry3-0">
+			<input type="hidden" name="ac_cntry4-0">
+			<input type="hidden" name="qtTypeState-0">
+			<input type="hidden" name="qtTypeName-0">
+			<input type="hidden" name="edt_by-0">
+			<input type="hidden" name="chkFlag-0">
+			<TD nowrap class="portlet-form-label-right" width="9%">
+			<CxCommand name="ToPage" pageId="account_window">
+				<a href="#" onClick="window.open('<CxOpVar field="this.valueHTMLHref"/>','customAccWin','width = 650, height=500,top=50,left=50, status=no, scrollbars=yes, resizable=no, alwaysRaised'); return false;">
+				<img border="0" src="<CxOpVar Field="CommonStore.ImagePath"/>/right_arrow.gif" alt="<CxOpVar Field="ui_comp.HDR_NewQte_AccMr"/>">
+				<CxOpVar Field="ui_comp.HDR_NewQte_AccMr"/>
+				</a>
+			</CxCommand>
+		    </TD>
+        </TR>
+        </TBODY>
+     </TABLE>
+	</tr>
+<CxComment>END Formatting Account Details Display</CxComment>
+<CxComment>R5 - Edit New Account Workflow Ends</CxComment>
+<CxComment>
+***************************************************************
+Added By Harshal (502221410)
+Edit window popup
+***************************************************************
+</CxComment>
+	<CxIf cond="AND(NOT(NULL(CommonStore.Opty_Flag)),EQ(cart.DESCRIPTION4,Approved))">
+	<CxThen>
+	<tr>
+		<td>
+			<CxCommand name="ToPage" pageId="contact_window">
+				<a href="#" onClick="window.open('<CxOpVar field="this.valueHTMLHref"/>','customEditCon','width=450,height=400,top=50,left=50,status=no,scrollbars=yes,resizable=no,alwaysRaised');return false;">
+				<img border="0" src="<CxOpVar Field="CommonStore.ImagePath"/>/right_arrow.gif" alt="<CxOpVar Field="ui_comp.HDR_EditContact"/>">
+				<CxOpVar Field="ui_comp.HDR_EditContact"/>
+				</a>
+			</CxCommand>
+		</td>
+	</tr>
+	</CxThen>
+	</CxIf>
+	</table>
+
+	<CxCallSub Name="ProgressDivSub"/>
+
+	<CxComment>Set to default values for the first time the page is visited</CxComment>
+	<CxIpVar target="CommonStore" field="QUOTE_LAYOUT_TYPE"		value="American" Cond="OR( NULL(CommonStore.QUOTE_LAYOUT_TYPE), NOT(GT(CommonStore.QUOTE_LAYOUT_TYPE,'')) )"/>
+
+	 <!-- Quote Exp -->
+	<table width="100%" border="0" cellspacing="0" cellpadding="0"  class="swb-table-container">
+
+	<tr>
+		<td valign="top">
+			<table  width="100%" border="0" cellspacing="1" cellpadding="0"  class="swb-table-container">
+				<tr>
+					<td class="portlet-form-field-label" nowrap>
+						<b><CxOpVar Field="ui_comp.HDR_PrntOpts_SelQED"/><font color="red">*</font></b>
+					</td>
+					<td class="portlet-form-input-field">
+						<input type="text" name="QUOTE_EXPIRATION_DATE_DES" size="15" disabled value='<CxOpVar field="cart.QUOTE_EXPIRATION_DATE" cond="NOT(NULL(cart.QUOTE_EXPIRATION_DATE))"/>'>
+						<CxComment>********13-Sep-2005 Subha sankha Roy***********
+						<img border="0" src="<CxOpVar Field="CommonStore.ImagePath"/>/calendar.gif"  onClick="javascript:popUpCalendar(this, document.html_pre_prev.elements['QUOTE_EXPIRATION_DATE_DES'], 'mm-dd-yyyy');captureDate();">
+						</CxComment>
+						<a href="#" onclick="javascript:popUpCalendar(this, document.html_pre_prev.elements['QUOTE_EXPIRATION_DATE_DES'], 'mm-dd-yyyy');captureDate();">
+							<img border="0" src="<CxOpVar Field="CommonStore.ImagePath"/>/calendar.gif">
+						</a>
+					</td>
+				</tr>
+				<CxComment><tr>
+					<td class="portlet-form-field-label" nowrap><b><CxOpVar field="ui_comp.Language_Label"/></b></td>
+					<td class="portlet-form-input-field" nowrap>
+						<select name="CUSTOMER_LOCALE-0" onchange="Localesubmit(this);">
+							<CxForEach TID="loop" Field="st_Territory.Quote_Locale_List">
+								<option value="<CxOpVar Field="loop.quote_Locale_ISO"/>" <CxOpVar Field="selected" Cond="EQ((loop.quote_Locale_ISO),cart.CUSTOMER_LOCALE)"/>>
+									<CxOpVar Field="loop.quote_Locale_Name"/>
+								</option>
+							</CxForEach>
+						</select>
+					</td>
+				</tr></CxComment>
+
+				<tr>
+					<td class="portlet-form-field-label" nowrap><b><CxOpVar field="ui_comp.Language_Label"/></b></td>
+					<td class="portlet-form-input-field" nowrap>
+						<input type="hidden" name="user_locale_pref-0" value="">
+						<select name="CUSTOMER_LOCALE-0" onchange="Localesubmit(this);">
+							<CxForEach TID="loop1" Field="st_Territory.Quote_Locale_List">
+								<option value="<CxOpVar Field="loop1.quote_Locale_ISO"/>"
+								<CxIf Cond="NOT(NULL(cart.user_locale_pref))"><CxThen>
+									<CxOpVar field="selected" cond="EQ(loop1.quote_Locale_ISO,cart.user_locale_pref)"/>
+								</CxThen><CxElseIf Cond="NOT(NULL(MultiValuedPrefsResultStore.user_locale_pref))"><CxThen>
+										<CxOpVar field="selected"
+										cond="EQ(loop1.quote_Locale_ISO,MultiValuedPrefsResultStore.user_locale_pref)"/>
+								</CxThen><CxElse>
+									<CxOpVar field="selected" cond="EQ(loop1.quote_Locale_ISO,CommonStore.USER_LOCALE)"/>
+								</CxElse></CxElseIf></CxIf>
+								>
+									<CxOpVar Field="loop1.quote_Locale_Name"/>
+								</option>
+							</CxForEach>
+						</select>
+					</td>
+				</tr>
+
+				<CxComment><tr>
+					<td class="portlet-form-field-label" nowrap><b><CxOpVar field="ui_comp.Language_Label"/></b></td>
+					<td class="portlet-form-input-field" nowrap>
+						<input type="hidden" name="user_locale_pref-0" value="">
+						<select name="CUSTOMER_LOCALE-0" onchange="Localesubmit(this);">
+							<CxForEach TID="loop1" Field="usr_locale_store.USER_LOCALES">
+								<CxStore tid="store" value="loop1.value">
+									<CxForEach field="store.value" tid="loop2">
+										<option value="<CxOpVar Field="loop2.value"/>"
+										<CxIf Cond="NOT(NULL(cart.user_locale_pref))"><CxThen>
+											<CxOpVar field="selected" cond="EQ(loop2.value,cart.user_locale_pref)"/>
+										</CxThen><CxElseIf Cond="NOT(NULL(MultiValuedPrefsResultStore.user_locale_pref))"><CxThen>
+												<CxOpVar field="selected"
+												cond="EQ(loop2.value,MultiValuedPrefsResultStore.user_locale_pref)"/>
+										</CxThen><CxElse>
+											<CxOpVar field="selected" cond="EQ(loop2.value,CommonStore.USER_LOCALE)"/>
+										</CxElse></CxElseIf></CxIf>
+										>
+											<CxOpVar Field="store.this.value"/>
+										</option>
+									</CxForEach>
+								</CxStore>
+							</CxForEach>
+						</select>
+					</td>
+				</tr></CxComment>
+
+				<tr>
+					<td class="portlet-form-field-label" nowrap>
+						<b><CxOpVar field="Quote_Elements.Customer_Ref_Num_label"/>Quote Reference No.</b>
+					</td>
+					<td class="portlet-form-input-field" nowrap>
+						<CxCallSub name="getEncodeStringForHtml" inputString="cart.ref_no"/>
+						<input  type="text" name="ref_no-0" style="font-family: Arial Unicode MS; border-style: solid; border-width: 1; border-color: #999999;" value="<CxOpVar Field="CommonStore.encodedString"/>">
+					</td>
+				</tr>
+			</table>
+		</td>
+		<td>
+			<table  width="100%" border="0" cellspacing="1" cellpadding="0"  class="swb-table-container">
+				<tr>
+					<td class="portlet-form-field-label" nowrap colspan="2">
+						<font size="3" face="Arial Unicode MS">
+							<b><CxOpVar Field="ui_comp.HDR_PrntOtps_CustNotes"/></b>
+						</font>
+					</td>
+				</tr>
+				<tr>
+					<td class="portlet-form-input-field" colspan="2">
+						<textarea name="free_text_entry-0" rows="3" cols="80" onkeyup="textLimit(this.form.elements['free_text_entry-0'], 600);" style="font-family: Arial Unicode MS; border-style: solid; border-width: 1; border-color: #999999;"><CxOpVar field="cart.free_text_entry" cond="NOT(EQ(cart.free_text,null))"/></textarea>
+						<input type="hidden" name="free_text-0" value="">
+					</td>
+				</tr>
+			</table>
+		</td>
+	</tr>
+	<tr>
+		<td colspan="2">
+			<table width="100%" border="0" cellspacing="1" cellpadding="0"  class="swb-table-container">
+				<tr>
+					<td class="portlet-form-field-label" nowrap>
+							<b>Price in words&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;</b>
+					</td>
+					<td class="portlet-form-input-field">
+						<CxIf cond="eq(cart.show_tax,Y)"><CxThen>
+								<CxCallSub name="getFormattedCurr" val="PricerCartFactorsStore.AGG_Total_Net_Selling_Price_With_Tax" cntry="cart.DEST_COUNTRY" curr="cart.CURRENCY"/>
+						</CxThen><CxElse>
+								<CxCallSub name="getFormattedCurr" val="PricerCartFactorsStore.AGG_Total_Net_Selling_Price" cntry="cart.DEST_COUNTRY" curr="cart.CURRENCY"/>
+						</CxElse></CxIf>
+						<CxOpVar Field="CommonStore.CURRENCY_COLUMN_FORMAT"/>
+						<CxCallSub name="getEncodeStringForHtml" inputString="cart.price_in_words"/>
+							<input  type="text" name="price_in_words-0" size="80" style="font-family: Arial Unicode MS; border-style: solid; text-align: right; border-width: 1; border-color: #999999;" value="<CxOpVar Field="CommonStore.encodedString"/>">
+					</td>
+				</tr>
+			</table>
+		</td>
+	</tr>
+</table>
+<CxComment>New Rows Addition For Print Option Realignment Ends</CxComment>
+<CxComment>Check if Contract is Novation,HPG or Medassets or not--Added by Shyam/Simplification change</CxComment>
+
+<CxIpVar field="REGIONAL_CONTRACT_NAME_PRODUCT_NAME" target="cart" value="(cart.REGIONAL_CONTRACT)(-)(cart.REGIONAL_CONTRACT_PROD_NAME)"/>
+<CxIpVar field="NATIONAL_CONTRACT_NAME_PRODUCT_NAME" target="cart" value="(cart.NATIONAL_CONTRACT)(-)(cart.NATIONAL_CONTRACT_PROD_NAME)"/>
+
+<CxIpVar field="Contract_Constaints_Flag" target="Contract_Constaints" value="false"/>
+<CxForEach tid="list" field="Contract_Constaints.Domains">
+	<CxIf cond="OR(EQ(cart.REGIONAL_CONTRACT_NAME_PRODUCT_NAME,list.value),EQ(cart.NATIONAL_CONTRACT_NAME_PRODUCT_NAME,list.value))"><CxThen>
+		<CxIpVar field="Contract_Constaints_Flag" target="Contract_Constaints" value="true"/>
+	</CxThen></CxIf>
+</CxForEach>
+<CxComment>Check if any upsell item is present and set the Upsell_Flag-Pintu</CxComment>
+		<CxIpVar target="CommonStore" field="Upsell_Flag" value="False"/>
+		<CxFilter TID="ProductConfigs" Field="cart.Quotes" Cond="NOT(MEMBER(Elem.extraInfo\\.DESCRIPTION3,[NonProducts,Trade-In,Non-Inventory,Local Buy,Non-Listed,Installation,BulkBuy]))">
+			<CxSort TID="s_quotes" Field="ProductConfigs.value" SortOn="extraInfo\\._CONTAINER_QUOTE_ID">
+				<CxForEach TID="loopQuote" Field="s_quotes.value">
+					<CxFilter field="loopQuote.LineItems-UPSELL CATEGORY" tid="filter_upsell">
+						<CxIf cond="GT(filter_upsell.size,0)"><CxThen>
+							<CxIpVar target="CommonStore" field="Upsell_Flag" value="True"/>
+						</CxThen></CxIf>
+					</CxFilter>
+				</CxForEach>
+			</CxSort>
+		</CxFilter>
+<div id="optionDiv" style="height: 146px; OVERFLOW: auto;">
+	<table border=0 cellPadding=0 cellSpacing=1 width="100%">
+	<CxSort field="MasterUserPrefsStore.value">
+	<CxForEach tid="list" field="this.value">
+		<CxIpVar target="temp" field="currentGroupValue" value="1"/>
+		<CxIpVar target="temp" field="class" value="portlet-form-field-label"/>
+		<CxIf cond="AND( NOT(EQ(list.value,AllHeaderPrefsList)) , AND(NOT(EQ(list.value,DefaultUserPrefsList)),NOT(EQ(list.value,AllPrefsList))) )"><CxThen>
+
+			<tr><td colspan="8" class="portlet-table-header"><b><CxOpVar field="print_option_label_store.(list.value)"/></b></td></tr>
+			<CxForEach tid="loop" field="MasterUserPrefsStore.(list.value)">
+				<CxIf cond="eq(temp.currentGroupValue,5)"><CxThen>
+					<CxIf cond="eq(temp.class,portlet-form-field-label)"><CxThen>
+						<CxIpVar target="temp" field="class" value="portlet-form-field-label-alternate"/>
+					</CxThen><CxElse>
+						<CxIpVar target="temp" field="class" value="portlet-form-field-label"/>
+					</CxElse></CxIf>
+				</CxThen></CxIf>
+				<CxIpVar target="temp" field="currentGroupValue" value="1" cond="eq(temp.currentGroupValue,5)"/>
+				<CxIf cond="eq(temp.currentGroupValue,1)"><CxThen><tr></CxThen></CxIf>
+				<CxComment>SImplification Change-Restrcting Intitate to accept for European Quote Layout-Pintu(502055735)</CxComment>
+					<CxIf cond="AND(NOT(EQ(CommonStore.QUOTE_LAYOUT_TYPE,American)),EQ(loop.value,initial_toAccept))">
+					<CxThen>
+						<!--
+							DO NOTHING-Restrcting Intitate to accept for European Quote Layout-Pintu 
+						 -->
+						<CxComment>DO NOTHING-Restrcting Intitate to accept for European Quote Layout-Pintu</CxComment>
+						<input type="hidden" name='<CxOpVar Field="loop.value"/>' value="N">
+						<input type="hidden" name='<CxOpVar Field="loop.value"/>-0' value="N">
+					</CxThen>
+					<CxElseIf cond="EQ(loop.value,initial_toAccept)">
+					<CxThen>
+						<CxComment>Intitate to accept Checkbox behavior-Pintu</CxComment>
+						<Cxif cond="eq(CommonStore.Upsell_Flag,True)">
+						<CxThen>
+								<td class="<CxOpVar field="temp.class"/>"  nowrap width="16.7%"><CxOpVar field="print_option_label_store.(loop.value)"/></td>
+								<td class="dataValue" >
+									<input type="checkbox" name='<CxOpVar Field="loop.value"/>' value="Y" disabled onClick="chkCoverPrefs(this.name);setPreferences(this.name)" checked/>
+									<input type="hidden" name='<CxOpVar Field="loop.value"/>-0' value="Y">
+								</td>
+						</CxThen>
+						<CxElse>
+								<td class="<CxOpVar field="temp.class"/>"  nowrap width="16.7%"><CxOpVar field="print_option_label_store.(loop.value)"/></td>
+								<td class="dataValue" >
+									<input type="checkbox" name='<CxOpVar Field="loop.value"/>' value="N" disabled onClick="chkCoverPrefs(this.name);setPreferences(this.name)"/>
+									<input type="hidden" name='<CxOpVar Field="loop.value"/>-0' value="N">
+								</td>
+								
+						</CxElse>
+						</CxIf>
+						
+					</CxThen>
+					<CxComment>Condition for Terms & conditions Start-Added by Shyam</CxComment>
+					<CxElseIf cond="AND(EQ(CommonStore.QUOTE_LAYOUT_TYPE,American),EQ(loop.value,acc_tc_attach))">
+					<CxThen>
+						<CxComment>Terms & Conditions Checkbox behavior-Shyam
+						TO check whether Contract is Novation,HPG,Medassets</CxComment>
+						<CxIf cond="EQ(Contract_Constaints.Contract_Constaints_Flag,false)">
+						<CxThen>
+								<td class="<CxOpVar field="temp.class"/>"  nowrap width="16.7%"><CxOpVar field="print_option_label_store.(loop.value)"/></td>
+								<td class="dataValue" >
+									<input type="checkbox" name='<CxOpVar Field="loop.value"/>' value="Y" enabled onClick="chkCoverPrefs(this.name);setPreferences(this.name)" checked/>
+									<input type="hidden" name='<CxOpVar Field="loop.value"/>-0' value="Y">
+								</td>
+						</CxThen>
+						<CxElse>
+								<td class="<CxOpVar field="temp.class"/>"  nowrap width="16.7%"><CxOpVar field="print_option_label_store.(loop.value)"/></td>
+								<td class="dataValue" >
+									<input type="checkbox" name='<CxOpVar Field="loop.value"/>' value="N" disabled onClick="chkCoverPrefs(this.name);setPreferences(this.name)"/>
+									<input type="hidden" name='<CxOpVar Field="loop.value"/>-0' value="N">
+								</td>
+								
+						</CxElse>
+						</CxIf>
+					</CxThen>
+					<CxComment>
+						Sales Rep's Contact Information Checkbox behavior-Shyam
+					</CxComment>
+					<CxElseIf cond="AND(EQ(loop.value,sales_rep_info),EQ(cart.ACCOUNT_COUNTRY,US))">
+					<CxThen>
+						<td class="<CxOpVar field="temp.class"/>"  nowrap width="16.7%"><CxOpVar field="print_option_label_store.(loop.value)"/></td>
+						<td class="dataValue" >
+									<input type="checkbox" name='<CxOpVar Field="loop.value"/>' value="N" disabled onClick="chkCoverPrefs(this.name);setPreferences(this.name)"/>
+									<input type="hidden" name='<CxOpVar Field="loop.value"/>-0' value="N">
+						</td>
+					</CxThen>
+					<CxComment>Condition for Terms & conditions End-Added by Shyam</CxComment>
+					<CxElseIf cond="EQ(loop.value,price3_upsell)">
+					<CxThen>
+	<CxComment>Extd Sell price Checkbox behavior-Pintu</CxComment>
+		<Cxif cond="eq(CommonStore.Upsell_Flag,True)">
+		<CxThen>
+			<CxIf Cond="EQ(cart.BUDGETARY_DOC,Y)">
+			<CxThen>
+				<td class="<CxOpVar field="temp.class"/>"  nowrap width="16.7%"><CxOpVar field="print_option_label_store.(loop.value)"/></td>
+				<td class="dataValue" >
+					<input type="checkbox" name='<CxOpVar Field="loop.value"/>' value="Y" enabled onClick="chkCoverPrefs(this.name);setPreferences(this.name)" checked/>
+					<input type="hidden" name='<CxOpVar Field="loop.value"/>-0' value="Y">
+				</td>
+			</CxThen>
+			<CxElse>
+				<CxIf cond = "EQ(cart.pole,AMERICA)">
+				<CxThen>
+					<td class="<CxOpVar field="temp.class"/>"  nowrap width="16.7%"><CxOpVar field="print_option_label_store.(loop.value)"/></td>
+					<td class="dataValue" >
+						<input type="checkbox" name='<CxOpVar Field="loop.value"/>' value="Y" disabled onClick="chkCoverPrefs(this.name);setPreferences(this.name)" checked/>
+						<input type="hidden" name='<CxOpVar Field="loop.value"/>-0' value="Y">
+					</td>
+				</CxThen>
+				<CxElse>
+					<td class="<CxOpVar field="temp.class"/>"  nowrap width="16.7%"><CxOpVar field="print_option_label_store.(loop.value)"/></td>
+					<td class="dataValue" >
+						<input type="checkbox" name='<CxOpVar Field="loop.value"/>' value="N" enabled onClick="chkCoverPrefs(this.name);setPreferences(this.name)" />
+						<input type="hidden" name='<CxOpVar Field="loop.value"/>-0' value="N">
+					</td>
+
+				</CxElse>
+				</CxIf>
+			</CxElse>
+			</CxIf>
+		</CxThen>
+		
+		<CxElse>
+								<td class="<CxOpVar field="temp.class"/>"  nowrap width="16.7%"><CxOpVar field="print_option_label_store.(loop.value)"/></td>
+								<td class="dataValue" >
+									<input type="checkbox" name='<CxOpVar Field="loop.value"/>' value="N" disabled onClick="chkCoverPrefs(this.name);setPreferences(this.name)"/>
+									<input type="hidden" name='<CxOpVar Field="loop.value"/>-0' value="N">
+								</td>
+								
+		</CxElse>
+		
+		</CxIf>
+</CxThen>
+					
+					<CxElse>
+				<CxComment>Modified For Print Options Feature set</CxComment>
+
+					<CxIf cond="EQ(loop.value,show_netsell_price)"><CxThen>
+						<CxComment><CxForEach tid="list" field="MasterUserPrefsStore.AllHeaderPrefsList"></CxComment>
+							<CxForeach tid="loop1" field="print_options_store.value">
+								<CxIf cond="EQ(loop1.value,budgetary_doc)"><CxThen>
+									<CxIf cond="EQ(print_options_store.loop1.value,Y)"><CxThen>
+										<td class="<CxOpVar field="temp.class"/>" nowrap width="16.7%"><CxOpVar field="print_option_label_store.(loop.value)"/></td>
+										<td class="dataValue" >
+											<input type="checkbox" id='<CxOpVar Field="loop.value"/>' name='<CxOpVar Field="loop.value"/>' value="Y" onClick="javascript:setPreferences(this.name)" checked/>
+											<input type="hidden" name='<CxOpVar Field="loop.value"/>-0' value="Y">
+										</td>
+									</CxThen><CxElse>
+										<td class="<CxOpVar field="temp.class"/>"  nowrap width="16.7%"><CxOpVar field="print_option_label_store.(loop.value)"/></td>
+										<td class="dataValue" >
+											<input type="checkbox" name='<CxOpVar Field="loop.value"/>' value="Y" disabled onClick="chkCoverPrefs(this.name);setPreferences(this.name)" checked/>
+											<input type="hidden" name='<CxOpVar Field="loop.value"/>-0' value="Y">
+										</td>
+									</CxElse></CxIf>
+								</CxThen></CxIf>
+							</CxforEach>
+					</CxThen>
+					<CxComment>**********for R5++ Cover Summary Page********</CxComment>
+					<CxElseIf cond="member(loop.value,MasterUserPrefsStore.AllViewContracList)"><CxThen>
+
+						<CxIf cond="eq(print_options_store.(loop.value),Y)">
+						<CxThen>
+							<td class="<CxOpVar field="temp.class"/>" nowrap width="16.7%"><CxOpVar field="print_option_label_store.(loop.value)"/></td>
+							<td class="dataValue" >
+								<input type="checkbox" name='<CxOpVar Field="loop.value"/>' value="Y" onClick="javascript:chkCoverPrefs(this.name);setPreferences(this.name)" checked />
+								<input type="hidden" name='<CxOpVar Field="loop.value"/>-0' value="Y">
+							</td>
+						</CxThen>
+						<CxElse>
+							<CxIf cond="and(eq(ContextPrefs.(loop.value),N),member(loop.value,print_option_diabled_store.disabledList))"><CxThen>
+								<td class="<CxOpVar field="temp.class"/>"  nowrap width="16.7%"><CxOpVar field="print_option_label_store.(loop.value)"/></td>
+								<td class="dataValue" >
+									<input type="checkbox" name='<CxOpVar Field="loop.value"/>' value="N" disabled onClick="chkCoverPrefs(this.name);setPreferences(this.name)"/>
+									<input type="hidden" name='<CxOpVar Field="loop.value"/>-0' value="N">
+								</td>
+							</CxThen>
+							<CxElse>
+								<td class="<CxOpVar field="temp.class"/>"  nowrap width="16.7%"><CxOpVar field="print_option_label_store.(loop.value)"/></td>
+								<td class="dataValue" >
+									<input type="checkbox" name='<CxOpVar Field="loop.value"/>'  value="N" onClick="chkCoverPrefs(this.name);setPreferences(this.name)"/>
+									<input type="hidden" name='<CxOpVar Field="loop.value"/>-0' value="N">
+								</td>
+							</CxElse></CxIf>
+						</CxElse></CxIf>
+					</CxThen>
+					<CxComment>**********End of R5++ Cover Summary Page********</CxComment>
+					<CxElse>
+						<CxIf cond="eq(print_options_store.(loop.value),Y)">
+						<CxThen>
+
+<CxComment>**********Hiding Promo checkbox********</CxComment>
+<CxIf cond="EQ(loop.value,promo)">
+         <CxThen>
+              <CxIf cond="EQ(FeatureStore.PROMO,false)">
+                  <CxThen>
+                                 <td class="<CxOpVar field="temp.class"/>" nowrap width="16.7%"><CxOpVar field="print_option_label_store.(loop.value)"/></td>
+		     <td class="dataValue" >
+		     <input type="checkbox" name='<CxOpVar Field="loop.value"/>' value="Y" onClick="javascript:chkCoverPrefs(this.name);setPreferences(this.name)" checked/>
+		     <input type="hidden" name='<CxOpVar Field="loop.value"/>-0' value="Y">
+		     </td>
+                 </CxThen>
+              </CxIf>
+          </CxThen>
+          <CxElse>
+
+
+							<td class="<CxOpVar field="temp.class"/>" nowrap width="16.7%"><CxOpVar field="print_option_label_store.(loop.value)"/></td>
+							<td class="dataValue" >
+								<input type="checkbox" name='<CxOpVar Field="loop.value"/>' value="Y" onClick="javascript:chkCoverPrefs(this.name);setPreferences(this.name)" checked/>
+								<input type="hidden" name='<CxOpVar Field="loop.value"/>-0' value="Y">
+							</td>
+       </CxElse>
+</CxIf>
+                                                                                   </CxThen>
+						<CxElse>
+							<CxIf cond="and(eq(ContextPrefs.(loop.value),N),member(loop.value,print_option_diabled_store.disabledList))"><CxThen>
+
+<CxIf cond="EQ(loop.value,promo)">
+         <CxThen>
+              <CxIf cond="EQ(FeatureStore.PROMO,false)">
+                  <CxThen>
+                         <td class="<CxOpVar field="temp.class"/>"  nowrap width="16.7%"><CxOpVar field="print_option_label_store.(loop.value)"/></td>
+	           <td class="dataValue" >
+	           <input type="checkbox" name='<CxOpVar Field="loop.value"/>' value="N" disabled onClick="chkCoverPrefs(this.name);setPreferences(this.name)"/>
+	           <input type="hidden" name='<CxOpVar Field="loop.value"/>-0' value="N">
+	           </td>
+                 </CxThen>
+              </CxIf>
+          </CxThen>
+          <CxElse>
+								<td class="<CxOpVar field="temp.class"/>"  nowrap width="16.7%"><CxOpVar field="print_option_label_store.(loop.value)"/></td>
+								<td class="dataValue" >
+									<input type="checkbox" name='<CxOpVar Field="loop.value"/>' value="N" disabled onClick="chkCoverPrefs(this.name);setPreferences(this.name)"/>
+									<input type="hidden" name='<CxOpVar Field="loop.value"/>-0' value="N">
+								</td>
+       </CxElse>
+</CxIf>                                                                                       </CxThen>
+							<CxElse>
+
+<CxIf cond="EQ(loop.value,promo)">
+         <CxThen>
+              <CxIf cond="EQ(FeatureStore.PROMO,false)">
+                  <CxThen>
+                             <td class="<CxOpVar field="temp.class"/>"  nowrap width="16.7%"><CxOpVar field="print_option_label_store.(loop.value)"/></td>
+		 <td class="dataValue" >
+		 <input type="checkbox" name='<CxOpVar Field="loop.value"/>'  value="N" onClick="chkCoverPrefs(this.name);setPreferences(this.name)"/>
+		 <input type="hidden" name='<CxOpVar Field="loop.value"/>-0' value="N">
+		 </td>
+                 </CxThen>
+              </CxIf>
+           </CxThen>
+           <CxElse>
+
+								<td class="<CxOpVar field="temp.class"/>"  nowrap width="16.7%"><CxOpVar field="print_option_label_store.(loop.value)"/></td>
+								<td class="dataValue" >
+									<input type="checkbox" name='<CxOpVar Field="loop.value"/>'  value="N" onClick="chkCoverPrefs(this.name);setPreferences(this.name)"/>
+									<input type="hidden" name='<CxOpVar Field="loop.value"/>-0' value="N">
+								</td>
+          </CxElse>
+ </CxIf>
+                                                                                     </CxElse></CxIf>
+						</CxElse></CxIf>
+					</CxElse></CxElseIf>
+
+                     </CxIf>
+                 <CxComment>
+                 Simplification Change for Initial to Accept Restriction to European Quotes-Pintu
+                 End of Else Clause</CxComment>
+				</CxElse>
+				</CxElseIf>
+				</CxElseIf>
+				<CxComment>
+                 Simplification Change for Terms & Conditions restrcition Restriction to European Quotes-Shyam
+                 End of Else Clause</CxComment>
+				</CxElseIf>
+				</CxElseIf>
+				 </CxIf>
+					<CxComment>Modified For Print Options Feature set</CxComment>
+				<CxIf cond="eq(temp.currentGroupValue,4)"><CxThen></tr></CxThen></CxIf>
+				<CxCallSub name="increamentGroupValue" currentValue="temp.currentGroupValue"/>
+			</CxForEach>
+		</CxThen></CxIf>
+	</CxForEach>
+	</CxSort>
+	
+		
+			
+	</table>
+		
+	<CxComment>Simplification Change for Cover Letter - Abhijit Nandi;start</CxComment>
+	
+	<CxIf cond= "EQ(cart.ACCOUNT_COUNTRY,US)">
+	<CxThen>	
+	<div id="coverLetterText" style="display: block">
+	<table border=0 cellPadding=0 cellSpacing=1 width="100%">
+	
+			<!-- Simplification Changes; Code changes forCustomer Centric Quote header repeating ;start-->
+			<!--  commenting out customer centric Quote display label 
+			<tr><td colspan="8" class="portlet-table-header">
+			<B><CxOpVar Field="ui_comp.HDR_CustomerCentricQuoteDisplay"/></B>
+			</td></tr> -->
+			<!-- Simplification Changes; Code changes forCustomer Centric Quote header repeating ;end-->
+			<tr><td>
+			<table  width="100%" border="0" cellspacing="1" cellpadding="0"  class="swb-table-container" align="left" valign="top">
+				<tr>
+					<td class="portlet-form-field-label" nowrap colspan="2">
+						<font size="3" face="Arial Unicode MS" color="red">
+							<CxOpVar Field="ui_comp.lbl_Warning"/>
+						</font>
+					</td>
+				</tr>
+				<tr>
+				<td>
+				<div align="left" style=" height: 140px; width :100%; OVERFLOW: auto;">
+ 					<u>DO NOT DO THE FOLLOWING:</u>
+					<ul>
+						<li>Make product feature/capability claims or comparisons to other products</li>
+						<li>Include any information inconsistent with the Quotation(s)</li>
+						<li>Make commitments on delivery / installation dates or reference price / payment terms</li>
+						<li>Reference deadlines (unless there is specific time limited promo/offer)</li>
+						<li>Ask the customer to sign the cover letter or include technical product specifications</li>
+						<li>Discuss non-standard T&#8217s & C&#8217s / changes that may have been agreed upon</li>
+						</ul>
+					<u>DO THE FOLLOWING:</u>
+					<ul>
+						<li>Refer to the specific Quotation number(s) and the modality / type of product being quoted</li>
+						<li>Thank the customer for considering GE Healthcare</li>
+						<li>Invite the customer to contact you with any questions</li>
+						<li>Keep the cover letter brief, friendly and respectful</li>
+					</ul>
+					
+				</div>
+				</td>
+				</tr>
+			</table>
+		   </td>
+			<td>
+			<table  width="100%" border="0" cellspacing="1" cellpadding="0"  class="swb-table-container" align="right">
+				<tr>
+					<td class="portlet-form-field-label" nowrap colspan="2">
+						<font size="3" face="Arial Unicode MS">
+							<b><CxOpVar Field="ui_comp.HDR_Coverlettercontent"/></b>
+						</font>
+					</td>
+				</tr>
+				<tr>
+					
+					<td class="portlet-form-input-field" colspan="2" align="left">
+					<CxComment> Simplification changes;Added below code for new text area for user selection; this text will be displayed in cover letter of quote pdf as cover_body;start</CxComment>
+					<textarea name="cover_free_text_entry-0" rows="8" cols="130" onkeyup="textLimit(this.form.elements['cover_free_text_entry-0'], 1500);" style="font-family: Arial Unicode MS; border-style: solid; border-width: 1;border-color: #999999;"><CxIf Cond="NULL(cart.cover_free_text)"><CxThen><CxOpVar Field="ui_comp.lbl_Letter0"/>&nbsp;<CxOpVar field="cart.CONTACT_FIRST_NAME"/>&#44;
+
+
+
+<CxOpVar Field="ui_comp.lbl_Letter1"/>&nbsp;
+
+<CxOpVar Field="ui_comp.lbl_Letter2"/>&nbsp;
+
+</CxThen>
+
+<CxElse><CxOpVar field="cart.cover_free_text_entry" /></CxElse></CxIf></textarea>
+					<CxComment> Simplification changes;Added below code for new text area for user selection; this text will be displayed in cover letter of quote pdf as cover_body;end</CxComment>
+					
+					
+						<input type="hidden" name="cover_free_text-0" value="">
+					<!--  <Script>alert("cover_free_text_entry-0 :::   <CxOpVar field="cart.cover_free_text_entry"/>");</Script>
+					<Script>alert("cover_free_text-0 :::   <CxOpVar field="cart.cover_free_text"/>");</Script>	-->
+					</td>
+				</tr>
+			</table>
+		   </td></tr>
+	</table>
+	</div>
+	</CxThen>
+	</CxIf>
+	
+	<CxComment>Simplification Change for Cover Letter - Abhijit Nandi;end</CxComment>
+</div>
+	<CxSub ltid="increamentGroupValue">
+		<CxForEach tid="loop" initLoopCount="increamentGroupValue.currentValue" Count="2">
+			<CxIpVar target="temp" field="currentGroupValue" value="loop.loopCount"/>
+		</CxForEach>
+	</CxSub>
+
+	<script language="javascript">
+	function setPreferences(objName){
+		if(eval("document.html_pre_prev.elements['" + objName + "']").checked){
+			//document.html_pre_prev.elements('configDisc').value=1;
+			eval("document.html_pre_prev.elements['" + objName + "-0']").value = "Y";
+		}else{
+			//document.html_pre_prev.elements('configDisc').value=0;
+			eval("document.html_pre_prev.elements['" + objName + "-0']").value = "N";
+		}
+	}
+
+	<CxComment><CxIf Cond="NOT(EQ(extraArgs.preview_format,HTML_FORMAT))"><CxThen></CxComment>
+		//alert(document.html_pre_prev.elements('CUSTOMER_LOCALE-0').options.length + " Hello");
+		for(i=0;i<document.html_pre_prev.elements('CUSTOMER_LOCALE-0').options.length;i++){
+			if(document.html_pre_prev.elements('CUSTOMER_LOCALE-0').options[i].value==locale)
+				document.html_pre_prev.elements('CUSTOMER_LOCALE-0').options.selectedIndex=i;
+		}
+		<CxComment></CxThen></CxIf></CxComment>
+	</script>
+
+	<input type="hidden" name="locale-1" value='<CxOpVar field="cart.CUSTOMER_LOCALE"/>'>
+
+	<CxIf cond="AND(NOT(NULL(cart.CONTRACT_ID)),NOT(EQ(cart.CONTRACT_ID,'')))"><CxThen>
+
+		<CxCommand name="compound" compound="yes" pageId="fop">
+			<CxCommand Name="setQuoteValue" TID="cmd">
+				<CxIf cond="AND(OR(NULL(extraArgs.cartDiscPercenatag),EQ(extraArgs.cartDiscPercenatag,NaN)),NULL(cart.cartDiscPercenatag))"><CxThen>
+					<CxIpVar field="cartDiscPercenatag" value="0\\.00" Target="cmd"/>
+				</CxThen><CxElseIf cond="AND(NOT(NULL(cart.cartDiscPercenatag)),NULL(extraArgs.cartDiscPercenatag))"><CxThen>
+					<CxIpVar field="cartDiscPercenatag" value="cart.cartDiscPercenatag" Target="cart"/>
+				</CxThen><CxElse>
+					<CxIpVar field="cartDiscPercenatag" value="extraArgs.cartDiscPercenatag" Target="cart"/>
+				</CxElse></CxElseIf></CxIf>
+				<CxIpVar field="target" value="cart"/>
+				<CxOpVar Field="this.ValueHTMLForm"/>
+			</CxCommand>
+			<CxCommand name="PluginFunction">
+				<CxIpVar field="function" value="CPQIntegrationPlugin\\.getContractSpecialLanguage"/>
+				<CxIpVar field="domainId" value="cart.QUOTE_DOMAIN_ID"/>
+				<CxIpVar field="quoteType" value="cart.DESCRIPTION5"/>
+				<CxIpVar field="quoteCat" value="Equipment"/>
+				<CxIpVar field="prevLocale" value="cart.CUSTOMER_LOCALE"/>
+				<CxIpVar field="contractId" value="cart.CONTRACT_ID"/>
+	 			<CxOpVar Field="this.ValueHTMLForm"/>
+			</CxCommand>
+			<CxCommand name="SaveQuotecart">
+				<CxIpVar Field="LAST_UPDATED_FIRSTNAME" Value="CommonStore.ORG_FIRSTNAME"/>
+				<CxIpVar Field="LAST_UPDATED_LASTNAME" Value="CommonStore.ORG_LASTNAME"/>
+				<CxIpVar Field="LAST_UPDATED_SSOID" Value="CommonStore.ORG_SSO_ID"/>
+				<CxComment> *** Two columns to capture user triggered save *** </CxComment>
+				<CxIpVar Field="LAST_USER_UPDATE_SSO_ID" Target="cart" Value="CommonStore.USER_SSO_ID"/>
+				<CxDate tid="currDate">
+					<CxIpVar Field="LAST_USER_UPDATE_DATE" Target="cart" Value="currDate.Date"/>
+				</CxDate>
+				<CxIpVar field="modify" value="1"/>
+				<CxOpVar field="this.valueHTMLForm"/>
+			</CxCommand>
+			<CxOpVar field="this.valueHTMLForm"/>
+		</CxCommand>
+
+	</CxThen><CxElse>
+
+		<CxCommand name="compound" compound="yes" pageId="fop">
+			<CxCommand Name="setQuoteValue" TID="cmd">
+				<CxIf cond="AND(OR(NULL(extraArgs.cartDiscPercenatag),EQ(extraArgs.cartDiscPercenatag,NaN)),NULL(cart.cartDiscPercenatag))"><CxThen>
+					<CxIpVar field="cartDiscPercenatag" value="0\\.00" Target="cmd"/>
+				</CxThen><CxElseIf cond="AND(NOT(NULL(cart.cartDiscPercenatag)),NULL(extraArgs.cartDiscPercenatag))"><CxThen>
+					<CxIpVar field="cartDiscPercenatag" value="cart.cartDiscPercenatag" Target="cart"/>
+				</CxThen><CxElse>
+					<CxIpVar field="cartDiscPercenatag" value="extraArgs.cartDiscPercenatag" Target="cart"/>
+				</CxElse></CxElseIf></CxIf>
+				<CxIpVar field="target" value="cart"/>
+				<CxOpVar Field="this.ValueHTMLForm"/>
+			</CxCommand>
+			<CxCommand name="SaveQuotecart">
+				<CxIpVar Field="LAST_UPDATED_FIRSTNAME" Value="CommonStore.ORG_FIRSTNAME"/>
+				<CxIpVar Field="LAST_UPDATED_LASTNAME" Value="CommonStore.ORG_LASTNAME"/>
+				<CxIpVar Field="LAST_UPDATED_SSOID" Value="CommonStore.ORG_SSO_ID"/>
+				<CxComment> *** Two columns to capture user triggered save *** </CxComment>
+				<CxIpVar Field="LAST_USER_UPDATE_SSO_ID" Target="cart" Value="CommonStore.USER_SSO_ID"/>
+				<CxDate tid="currDate">
+					<CxIpVar Field="LAST_USER_UPDATE_DATE" Target="cart" Value="currDate.Date"/>
+				</CxDate>
+				<CxIpVar field="modify" value="1"/>
+				<CxOpVar field="this.valueHTMLForm"/>
+			</CxCommand>
+			<CxOpVar field="this.valueHTMLForm"/>
+		</CxCommand>
+
+	</CxElse></CxIf>
+	
+	</form>
+
+
+	</div>
+		<CxComment><CxIf Cond="NOT(EQ(cart.ACCOUNT_NAME,N))">
+		<CxThen>
+			<CxCallSub name="getEncodeStringForHtml" inputString="cart.ACCOUNT_NAME"/>
+			<CxOpVar Field="CommonStore.encodedString"/>
+			<script>
+					var dispAcNm = '<CxOpVar Field="CommonStore.encodedString"/>';
+					alert("cart.ACCOUNT_NAME == " + dispAcNm);
+			</script>
+		</CxThen>
+		<CxElse>
+			<CxCallSub name="getEncodeStringForHtml" inputString="cart.ac_name"/>
+			<CxOpVar Field="CommonStore.encodedString"/>
+			<script>
+					var dispAcNm = '<CxOpVar Field="CommonStore.encodedString"/>';
+					alert("cart.ac_name ==  " + dispAcNm);
+			</script>
+		</CxElse>
+		</CxIf>
+
+		<CxCallSub Name="displayQuoteInfoTest" ApproverSSOID="Cart.APPROVER_SSOID" SuperApproverSSOID="Cart.SUPER_APPR_SSO_ID" />
+		<CxCallSub name="displayQuoteNameVersionStatusInfo"/></CxComment>
+</body>
+
+<!--Comments to be removed by Kumar-->
+
+<!--
+CommonStore.Software :::  		<CxOpVar field="CommonStore.Software"/> 
+CommonStore.Miscellaneous :::  	<CxOpVar field="CommonStore.Miscellaneous"/>
+CommonStore.Equipment :::  		<CxOpVar field="CommonStore.Equipment"/>
+CommonStore.Hardware :::  		<CxOpVar field="CommonStore.Hardware"/>
+CommonStore.Training :::  		<CxOpVar field="CommonStore.Training"/>
+CommonStore.TradeIn :::  		<CxOpVar field="CommonStore.TradeIn"/>
+CommonStore.Accessories :::  	<CxOpVar field="CommonStore.Accessories"/>
+CommonStore.Service :::  		<CxOpVar field="CommonStore.Service"/>
+
+InvestmentSummary.Software :::  		<CxOpVar field="InvestmentSummary.Software"/> 
+InvestmentSummary.Miscellaneous :::  	<CxOpVar field="InvestmentSummary.Miscellaneous"/>
+InvestmentSummary.Equipment :::  		<CxOpVar field="InvestmentSummary.Equipment"/>
+CommonStore.Hardware :::  		<CxOpVar field="CommonStore.Hardware"/>
+CommonStore.Training :::  		<CxOpVar field="CommonStore.Training"/>
+CommonStore.TradeIn :::  		<CxOpVar field="CommonStore.TradeIn"/>
+CommonStore.Accessories :::  	<CxOpVar field="CommonStore.Accessories"/>
+CommonStore.Service :::  		<CxOpVar field="CommonStore.Service"/>
+cart.REGIONAL_CONTRACT_NAME_PRODUCT_NAME::<CxOpVar Field="cart.REGIONAL_CONTRACT_NAME_PRODUCT_NAME" cond="NOT(NULL(cart.REGIONAL_CONTRACT_NAME_PRODUCT_NAME))"/>
+cart.NATIONAL_CONTRACT_NAME_PRODUCT_NAME::<CxOpVar Field="cart.NATIONAL_CONTRACT_NAME_PRODUCT_NAME" cond="NOT(NULL(cart.NATIONAL_CONTRACT_NAME_PRODUCT_NAME))"/>
+
+<CxCallSub name="getAccountDet" />
+<CxOpVar field="acc_details_store.ACC_DETAILS"/>
+	<CxForeach tid="loop" field="acc_details_store.ACC_DETAILS">
+	<Script>
+		alert("ACCOUNT_NAME:<CxOpVar field="loop.ACCOUNT_NAME"/>");
+		alert("loop.value:<CxOpVar field="loop.value"/>");
+		
+			
+		alert("ACCOUNT_ADDRESS:<CxOpVar field="loop.ACCOUNT_ADDRESS"/>");
+		</Script>
+	</CxforEach>
+	
+-->
+</html>
+</CxGen2Root>
