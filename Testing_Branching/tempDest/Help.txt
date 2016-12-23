@@ -1,3 +1,8 @@
 Hello, 
 
 this file is included in here to test the unclean activty that can be created in GIT.
+
+
+++++++++++++++++++++++++++++++++++++++
+ADDING THIS TEXT TO TEST UP WITH GIT |
+++++++++++++++++++++++++++++++++++++++
